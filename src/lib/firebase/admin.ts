@@ -24,7 +24,7 @@ function getFirebaseAdminApp(): App {
   );
   const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-  const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
+  const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
 
   if (privateKey && projectId && clientEmail) {
     adminApp = initializeApp({
