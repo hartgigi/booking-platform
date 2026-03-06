@@ -12,11 +12,16 @@ import {
   type Timestamp,
   type QueryConstraint,
 } from "firebase/firestore";
+import { format } from "date-fns";
 import { db } from "@/lib/firebase/client";
 import type { Booking, BookingStatus } from "@/types";
 import type { BookingFilters } from "@/types";
 
 const COLLECTION = "bookings";
+
+function bookingsCollection(tenantId: string) {
+  return collection(db, "tenants", tenantId, "bookings");
+}
 
 function toBooking(id: string, data: DocumentData): Booking {
   return {
@@ -36,6 +41,13 @@ function toBooking(id: string, data: DocumentData): Booking {
     status: data.status as BookingStatus,
     notes: data.notes ?? "",
     price: data.price,
+    depositAmount: data.depositAmount ?? 0,
+    depositStatus: (data.depositStatus as Booking["depositStatus"]) ?? "none",
+    depositPaidAt: (data.depositPaidAt as Timestamp) ?? null,
+    depositChargeId: (data.depositChargeId as string) ?? "",
+    remainingAmount: data.remainingAmount ?? 0,
+    remainingStatus: (data.remainingStatus as Booking["remainingStatus"]) ?? "pending",
+    remainingPaidAt: (data.remainingPaidAt as Timestamp) ?? null,
     createdAt: data.createdAt as Timestamp,
     updatedAt: data.updatedAt as Timestamp,
   };
@@ -45,40 +57,38 @@ export async function getBookings(
   tenantId: string,
   filters: BookingFilters = {}
 ): Promise<Booking[]> {
-  const constraints: QueryConstraint[] = [
-    where("tenantId", "==", tenantId),
-  ];
+  console.log("Querying bookings from:", `tenants/${tenantId}/bookings`);
+  const constraints: QueryConstraint[] = [];
   if (filters.date) constraints.push(where("date", "==", filters.date));
   if (filters.status) constraints.push(where("status", "==", filters.status));
   if (filters.staffId) constraints.push(where("staffId", "==", filters.staffId));
   if (filters.serviceId) constraints.push(where("serviceId", "==", filters.serviceId));
   constraints.push(orderBy("date", "desc"));
   constraints.push(orderBy("startTime", "asc"));
-  const q = query(collection(db, COLLECTION), ...constraints);
+  const q = query(bookingsCollection(tenantId), ...constraints);
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => toBooking(d.id, d.data()));
+  return snapshot.docs.map((d) => toBooking(d.id, { ...d.data(), tenantId }));
 }
 
 export async function getBooking(
   tenantId: string,
   bookingId: string
 ): Promise<Booking | null> {
-  const ref = doc(db, COLLECTION, bookingId);
+  const ref = doc(db, "tenants", tenantId, "bookings", bookingId);
   const snapshot = await getDoc(ref);
   if (!snapshot.exists()) return null;
   const data = snapshot.data();
-  if (data.tenantId !== tenantId) return null;
-  return toBooking(snapshot.id, data);
+  return toBooking(snapshot.id, { ...data, tenantId });
 }
 
 export async function updateBookingStatus(
   tenantId: string,
   bookingId: string,
-  status: "confirmed" | "admin_cancelled"
+  status: "confirmed" | "admin_cancelled" | "completed"
 ): Promise<void> {
-  const ref = doc(db, COLLECTION, bookingId);
+  const ref = doc(db, "tenants", tenantId, "bookings", bookingId);
   const snapshot = await getDoc(ref);
-  if (!snapshot.exists() || snapshot.data().tenantId !== tenantId) {
+  if (!snapshot.exists()) {
     throw new Error("Booking not found");
   }
   await updateDoc(ref, {
@@ -88,15 +98,14 @@ export async function updateBookingStatus(
 }
 
 export async function getTodayBookings(tenantId: string): Promise<Booking[]> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = format(new Date(), "yyyy-MM-dd");
   const q = query(
-    collection(db, COLLECTION),
-    where("tenantId", "==", tenantId),
+    bookingsCollection(tenantId),
     where("date", "==", today),
     orderBy("startTime", "asc")
   );
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => toBooking(d.id, d.data()));
+  return snapshot.docs.map((d) => toBooking(d.id, { ...d.data(), tenantId }));
 }
 
 export interface BookingStats {
@@ -104,20 +113,21 @@ export interface BookingStats {
   totalPending: number;
   totalConfirmed: number;
   totalCancelled: number;
+  totalCompleted: number;
   totalThisMonth: number;
   revenueThisMonth: number;
+  totalRemainingPending: number;
 }
 
 export async function getBookingStats(
   tenantId: string
 ): Promise<BookingStats> {
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  const monthStart = now.toISOString().slice(0, 7) + "-01";
+  const today = format(now, "yyyy-MM-dd");
+  const monthStart = format(now, "yyyy-MM-01");
   const snapshot = await getDocs(
     query(
-      collection(db, COLLECTION),
-      where("tenantId", "==", tenantId),
+      bookingsCollection(tenantId),
       where("date", ">=", monthStart),
       where("date", "<=", today)
     )
@@ -127,10 +137,12 @@ export async function getBookingStats(
   let totalPending = 0;
   let totalConfirmed = 0;
   let totalCancelled = 0;
+  let totalCompleted = 0;
   let revenueThisMonth = 0;
+  let totalRemainingPending = 0;
   for (const d of docs) {
     const date = d.date as string;
-    const status = d.status as BookingStatus;
+    const status = (d.status as string) ?? "";
     if (date === today) totalToday += 1;
     if (status === "open") totalPending += 1;
     else if (status === "confirmed") {
@@ -138,6 +150,12 @@ export async function getBookingStats(
       revenueThisMonth += Number(d.price) || 0;
     } else if (status === "user_cancelled" || status === "admin_cancelled") {
       totalCancelled += 1;
+    } else if (status === "completed") {
+      totalCompleted += 1;
+      revenueThisMonth += Number(d.price) || 0;
+    }
+    if ((d.remainingStatus as string) === "pending" && Number(d.remainingAmount) > 0) {
+      totalRemainingPending += 1;
     }
   }
   return {
@@ -145,7 +163,9 @@ export async function getBookingStats(
     totalPending,
     totalConfirmed,
     totalCancelled,
+    totalCompleted,
     totalThisMonth: docs.length,
     revenueThisMonth,
+    totalRemainingPending,
   };
 }

@@ -1,20 +1,23 @@
 import { useState, useEffect } from "react";
 import {
   collection,
-  doc,
   query,
   where,
   orderBy,
   onSnapshot,
+  getDocs,
   type Unsubscribe,
   type QueryConstraint,
 } from "firebase/firestore";
+import { format } from "date-fns";
 import { db } from "@/lib/firebase/client";
 import type { Booking, BookingStatus } from "@/types";
 import type { BookingFilters } from "@/types";
 import type { Timestamp } from "firebase/firestore";
 
-const COLLECTION = "bookings";
+function bookingsCollection(tenantId: string) {
+  return collection(db, "tenants", tenantId, "bookings");
+}
 
 function toBooking(id: string, data: Record<string, unknown>): Booking {
   return {
@@ -34,6 +37,13 @@ function toBooking(id: string, data: Record<string, unknown>): Booking {
     status: data.status as BookingStatus,
     notes: (data.notes as string) ?? "",
     price: data.price as number | undefined,
+    depositAmount: (data.depositAmount as number) ?? 0,
+    depositStatus: (data.depositStatus as Booking["depositStatus"]) ?? "none",
+    depositPaidAt: (data.depositPaidAt as Timestamp) ?? null,
+    depositChargeId: (data.depositChargeId as string) ?? "",
+    remainingAmount: (data.remainingAmount as number) ?? 0,
+    remainingStatus: (data.remainingStatus as Booking["remainingStatus"]) ?? "pending",
+    remainingPaidAt: (data.remainingPaidAt as Timestamp) ?? null,
     createdAt: data.createdAt as Timestamp,
     updatedAt: data.updatedAt as Timestamp,
   };
@@ -54,23 +64,38 @@ export function useBookings(
       setError(null);
       return;
     }
+    console.log("useBookings tenantId:", tenantId);
     setLoading(true);
     setError(null);
     // Firestore listener: must return unsubscribe for cleanup on unmount
-    const constraints: QueryConstraint[] = [
-      where("tenantId", "==", tenantId),
-    ];
+    const constraints: QueryConstraint[] = [];
     if (filters.date) constraints.push(where("date", "==", filters.date));
     if (filters.status) constraints.push(where("status", "==", filters.status));
     if (filters.staffId) constraints.push(where("staffId", "==", filters.staffId));
     if (filters.serviceId) constraints.push(where("serviceId", "==", filters.serviceId));
     constraints.push(orderBy("date", "desc"));
     constraints.push(orderBy("startTime", "asc"));
-    const q = query(collection(db, COLLECTION), ...constraints);
+    console.log("useBookings filters:", JSON.stringify(filters));
+    console.log(
+      "useBookings constraints:",
+      constraints.map((c) => (c as any).toString && (c as any).toString())
+    );
+    console.log("Querying bookings from:", `tenants/${tenantId}/bookings`);
+    const q = query(bookingsCollection(tenantId), ...constraints);
     const unsub: Unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        setBookings(snapshot.docs.map((d) => toBooking(d.id, d.data())));
+        console.log(
+          "useBookings snapshot size:",
+          snapshot.size,
+          "docs:",
+          snapshot.docs.map((d) => d.id)
+        );
+        setBookings(
+          snapshot.docs.map((d) =>
+            toBooking(d.id, { ...d.data(), tenantId } as Record<string, unknown>)
+          )
+        );
         setLoading(false);
       },
       (err) => {
@@ -78,6 +103,18 @@ export function useBookings(
         setLoading(false);
       }
     );
+    // TEMP DEBUG: query without filters
+    getDocs(collection(db, "tenants", tenantId, "bookings")).then((snap) => {
+      console.log(
+        "DEBUG: All bookings (no filter):",
+        snap.size,
+        snap.docs.map((d) => ({
+          id: d.id,
+          date: d.data().date,
+          status: d.data().status,
+        }))
+      );
+    });
     return () => unsub();
   }, [tenantId, filters.date, filters.status, filters.staffId, filters.serviceId]);
 
@@ -98,17 +135,16 @@ export function useTodayBookings(tenantId: string | null) {
     }
     setLoading(true);
     setError(null);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = format(new Date(), "yyyy-MM-dd");
     const q = query(
-      collection(db, COLLECTION),
-      where("tenantId", "==", tenantId),
+      bookingsCollection(tenantId),
       where("date", "==", today),
       orderBy("startTime", "asc")
     );
     const unsub = onSnapshot(
       q,
       (snapshot) => {
-        setBookings(snapshot.docs.map((d) => toBooking(d.id, d.data())));
+        setBookings(snapshot.docs.map((d) => toBooking(d.id, { ...d.data(), tenantId } as Record<string, unknown>)));
         setLoading(false);
       },
       (err) => {
@@ -127,8 +163,10 @@ export interface BookingStats {
   totalPending: number;
   totalConfirmed: number;
   totalCancelled: number;
+  totalCompleted: number;
   totalThisMonth: number;
   revenueThisMonth: number;
+  totalRemainingPending: number;
 }
 
 export function useBookingStats(tenantId: string | null) {
@@ -137,8 +175,10 @@ export function useBookingStats(tenantId: string | null) {
     totalPending: 0,
     totalConfirmed: 0,
     totalCancelled: 0,
+    totalCompleted: 0,
     totalThisMonth: 0,
     revenueThisMonth: 0,
+    totalRemainingPending: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -149,34 +189,45 @@ export function useBookingStats(tenantId: string | null) {
       setError(null);
       return;
     }
+    console.log("useBookingStats tenantId:", tenantId);
     setLoading(true);
     setError(null);
     const now = new Date();
-    const today = now.toISOString().slice(0, 10);
-    const monthStart = now.toISOString().slice(0, 7) + "-01";
+    const today = format(now, "yyyy-MM-dd");
+    const monthStart = format(now, "yyyy-MM-01");
     const q = query(
-      collection(db, COLLECTION),
-      where("tenantId", "==", tenantId),
+      bookingsCollection(tenantId),
       where("date", ">=", monthStart),
       where("date", "<=", today)
     );
     const unsub = onSnapshot(
       q,
       (snapshot) => {
+        console.log("useBookingStats snapshot size:", snapshot.size);
         const docs = snapshot.docs.map((d) => d.data());
         let totalToday = 0;
         let totalPending = 0;
         let totalConfirmed = 0;
         let totalCancelled = 0;
+        let totalCompleted = 0;
         let revenueThisMonth = 0;
+        let totalRemainingPending = 0;
         for (const d of docs) {
-          if (d.date === today) totalToday += 1;
-          if (d.status === "open") totalPending += 1;
-          else if (d.status === "confirmed") {
+          const date = d.date as string;
+          const status = (d.status as string) ?? "";
+          if (date === today) totalToday += 1;
+          if (status === "open") totalPending += 1;
+          else if (status === "confirmed") {
             totalConfirmed += 1;
             revenueThisMonth += Number(d.price) || 0;
-          } else if (d.status === "user_cancelled" || d.status === "admin_cancelled") {
+          } else if (status === "user_cancelled" || status === "admin_cancelled") {
             totalCancelled += 1;
+          } else if (status === "completed") {
+            totalCompleted += 1;
+            revenueThisMonth += Number(d.price) || 0;
+          }
+          if ((d.remainingStatus as string) === "pending" && Number(d.remainingAmount) > 0) {
+            totalRemainingPending += 1;
           }
         }
         setStats({
@@ -184,8 +235,10 @@ export function useBookingStats(tenantId: string | null) {
           totalPending,
           totalConfirmed,
           totalCancelled,
+          totalCompleted,
           totalThisMonth: docs.length,
           revenueThisMonth,
+          totalRemainingPending,
         });
         setLoading(false);
       },

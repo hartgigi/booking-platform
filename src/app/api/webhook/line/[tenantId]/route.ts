@@ -1,114 +1,559 @@
-import { NextRequest, NextResponse } from "next/server";
-import type { WebhookEvent, WebhookRequestBody } from "@line/bot-sdk";
-import { adminDb } from "@/lib/firebase/admin";
+import type { WebhookEvent, WebhookRequestBody, FlexContainer } from "@line/bot-sdk";
+import { adminDb, adminStorage } from "@/lib/firebase/admin";
+import { validateLineSignature } from "@/lib/line/client";
 import {
-  validateLineSignature,
-  getLineClient,
-  replyText,
-  replyFlex,
-  replyConfirmTemplate,
-  sendFlexMessage,
-} from "@/lib/line/client";
-import {
-  buildWelcomeMessage,
-  buildBookingConfirmMessage,
+  buildShopInfoMessage,
+  buildLineDatePickerFlex,
+  buildLineServicesFlex,
+  buildLineStaffFlex,
+  buildLineTimeSlotsFlex,
+  buildLineBookingSummaryFlex,
+  buildLineMyBookingsFlex,
+  buildLineCancelConfirmFlex,
   buildBookingSuccessMessage,
   buildBookingCancelledMessage,
-  buildRescheduleMessage,
 } from "@/lib/line/messages";
 import {
   notifyAdminNewBooking,
   notifyAdminBookingCancelledByUser,
-  notifyCustomerBookingConfirmed,
-  notifyCustomerBookingCancelledByAdmin,
 } from "@/lib/line/notify";
-import { cancelBooking } from "@/lib/firebase/createBooking";
-import type {
-  Tenant,
-  Customer,
-  Booking,
-  BookingFlowStateDoc,
-} from "@/types";
+import { createBooking, cancelBooking } from "@/lib/firebase/createBooking";
+import type { Tenant, Customer, Booking } from "@/types";
 import { FieldValue } from "firebase-admin/firestore";
 import { format, addDays, getDay } from "date-fns";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenantId: string }> }
-) {
-  const { tenantId } = await params;
-  const signature = request.headers.get("x-line-signature") ?? "";
-  const rawBody = await request.text();
-  const tenantDoc = await adminDb.collection("tenants").doc(tenantId).get();
-  if (!tenantDoc.exists) {
-    return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
-  }
-  const tenant = { id: tenantDoc.id, ...tenantDoc.data() } as Tenant;
-  if (!validateLineSignature(rawBody, tenant.lineChannelSecret, signature)) {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-  }
-  const body = JSON.parse(rawBody) as WebhookRequestBody;
-  for (const event of body.events) {
-    try {
-      await handleEvent(tenantId, tenant, event);
-    } catch (err) {
-      console.error("Webhook event error:", err);
-    }
-  }
-  return NextResponse.json({ ok: true });
+export async function GET() {
+  return new Response("OK", { status: 200 });
 }
 
-async function handleEvent(
+export async function POST(
+  request: Request,
+  { params }: { params: { tenantId: string } }
+) {
+  const { tenantId } = params;
+  let rawBody: string;
+  try {
+    rawBody = await request.text();
+  } catch {
+    return new Response("OK", { status: 200 });
+  }
+  const signature = request.headers.get("x-line-signature") ?? "";
+  const res = new Response("OK", { status: 200 });
+  const tenant = await getTenantById(tenantId);
+  if (!tenant) return res;
+  if (!validateLineSignature(rawBody, tenant.lineChannelSecret, signature)) return res;
+  processEvents(tenantId, rawBody).catch(console.error);
+  return res;
+}
+
+async function getTenantServices(tenantId: string) {
+  const subSnap = await adminDb
+    .collection("tenants")
+    .doc(tenantId)
+    .collection("services")
+    .where("isActive", "==", true)
+    .get();
+  if (!subSnap.empty) {
+    return subSnap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        name: (data.name as string) ?? "",
+        durationMinutes: (data.durationMinutes as number) ?? 0,
+        price: (data.price as number) ?? 0,
+      };
+    });
+  }
+  const topSnap = await adminDb
+    .collection("services")
+    .where("tenantId", "==", tenantId)
+    .where("isActive", "==", true)
+    .get();
+  return topSnap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      name: (data.name as string) ?? "",
+      durationMinutes: (data.durationMinutes as number) ?? 0,
+      price: (data.price as number) ?? 0,
+    };
+  });
+}
+
+async function getTenantStaff(tenantId: string) {
+  const subSnap = await adminDb
+    .collection("tenants")
+    .doc(tenantId)
+    .collection("staff")
+    .where("isActive", "==", true)
+    .get();
+  if (!subSnap.empty) {
+    return subSnap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        name: (data.name as string) ?? "",
+        serviceIds: (data.serviceIds as string[]) ?? [],
+      };
+    });
+  }
+  const topSnap = await adminDb
+    .collection("staff")
+    .where("tenantId", "==", tenantId)
+    .where("isActive", "==", true)
+    .get();
+  return topSnap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      name: (data.name as string) ?? "",
+      serviceIds: (data.serviceIds as string[]) ?? [],
+    };
+  });
+}
+
+async function getOmiseQrPublicUrl(
+  qrUrl: string,
+  secretKey: string
+): Promise<string> {
+  if (!qrUrl || !secretKey) return "";
+  try {
+    const sharp = require("sharp");
+    const response = await fetch(qrUrl, {
+      headers: {
+        Authorization:
+          "Basic " + Buffer.from(secretKey + ":").toString("base64"),
+      },
+    });
+    if (!response.ok) {
+      console.error("QR fetch error:", await response.text());
+      return "";
+    }
+    const svgBuffer = Buffer.from(await response.arrayBuffer());
+    const pngBuffer = await sharp(svgBuffer).png().resize(400, 400).toBuffer();
+    const bucket = adminStorage.bucket(
+      "booking-platform-80979.firebasestorage.app"
+    );
+    const fileName = `qr-codes/${Date.now()}.png`;
+    const file = bucket.file(fileName);
+    await file.save(pngBuffer, {
+      contentType: "image/png",
+      metadata: { cacheControl: "public, max-age=300" },
+    });
+    await file.makePublic();
+    const publicUrl = `https://storage.googleapis.com/booking-platform-80979.firebasestorage.app/${fileName}`;
+    console.log("QR public URL:", publicUrl);
+    return publicUrl;
+  } catch (err) {
+    console.error("QR upload error:", err);
+    return "";
+  }
+}
+
+async function getServiceDoc(tenantId: string, serviceId: string) {
+  const subSnap = await adminDb
+    .collection("tenants")
+    .doc(tenantId)
+    .collection("services")
+    .doc(serviceId)
+    .get();
+  if (subSnap.exists) return subSnap.data();
+  const topSnap = await adminDb.collection("services").doc(serviceId).get();
+  return topSnap.exists ? topSnap.data() : null;
+}
+
+async function getStaffDoc(tenantId: string, staffId: string) {
+  if (staffId === "any") return null;
+  const subSnap = await adminDb
+    .collection("tenants")
+    .doc(tenantId)
+    .collection("staff")
+    .doc(staffId)
+    .get();
+  if (subSnap.exists) return subSnap.data();
+  const topSnap = await adminDb.collection("staff").doc(staffId).get();
+  return topSnap.exists ? topSnap.data() : null;
+}
+
+function timeToMinutes(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + (m ?? 0);
+}
+
+function minutesToTime(min: number): string {
+  const h = Math.floor(min / 60) % 24;
+  const m = min % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function calculateEndTime(startTime: string, durationMinutes: number): string {
+  const [hours, minutes] = startTime.split(":").map(Number);
+  const baseMinutes = (hours || 0) * 60 + (minutes || 0);
+  const totalMinutes = baseMinutes + durationMinutes;
+  const endHours = Math.floor(totalMinutes / 60) % 24;
+  const endMins = totalMinutes % 60;
+  return `${String(endHours).padStart(2, "0")}:${String(endMins).padStart(
+    2,
+    "0"
+  )}`;
+}
+
+async function getAvailableSlotsForStaff(
+  tenantId: string,
+  staffId: string,
+  serviceId: string,
+  date: string
+): Promise<{ time: string; isAvailable: boolean }[]> {
+  const tenantDoc = await adminDb.collection("tenants").doc(tenantId).get();
+  const tenantData = tenantDoc.exists ? tenantDoc.data() : null;
+  const slotDurationMinutes = (tenantData?.slotDurationMinutes as number) ?? 60;
+  const openTime = (tenantData?.openTime as string) ?? "09:00";
+  const closeTime = (tenantData?.closeTime as string) ?? "20:00";
+  let workStartTime = openTime;
+  let workEndTime = closeTime;
+  let workDays: number[] = (tenantData?.openDays as number[]) ?? [1, 2, 3, 4, 5, 6];
+  if (staffId !== "any") {
+    const staffData = await getStaffDoc(tenantId, staffId);
+    if (staffData) {
+      workStartTime = (staffData.workStartTime as string) ?? openTime;
+      workEndTime = (staffData.workEndTime as string) ?? closeTime;
+      workDays = (staffData.workDays as number[]) ?? workDays;
+    }
+  }
+  const dateObj = new Date(date + "T00:00:00");
+  const dayOfWeek = dateObj.getDay();
+  if (!workDays.includes(dayOfWeek)) return [];
+  const serviceData = await getServiceDoc(tenantId, serviceId);
+  const durationMinutes = (serviceData?.durationMinutes as number) ?? 60;
+  const startMin = timeToMinutes(workStartTime);
+  const endMin = timeToMinutes(workEndTime);
+  let blockedRanges: { start: number; end: number }[] = [];
+  if (staffId !== "any") {
+    const bookingsSnap = await adminDb
+      .collection("bookings")
+      .where("tenantId", "==", tenantId)
+      .where("staffId", "==", staffId)
+      .where("date", "==", date)
+      .where("status", "in", ["open", "confirmed"])
+      .get();
+    for (const d of bookingsSnap.docs) {
+      const b = d.data();
+      const servData = await getServiceDoc(tenantId, b.serviceId as string);
+      const dur = (servData?.durationMinutes as number) ?? 60;
+      const bStart = timeToMinutes(b.startTime as string);
+      blockedRanges.push({ start: bStart, end: bStart + dur });
+    }
+  }
+  const slots: { time: string; isAvailable: boolean }[] = [];
+  for (let m = startMin; m + durationMinutes <= endMin; m += slotDurationMinutes) {
+    const slotStart = m;
+    const slotEnd = m + durationMinutes;
+    const overlaps = blockedRanges.some(
+      (r) =>
+        (slotStart >= r.start && slotStart < r.end) ||
+        (slotEnd > r.start && slotEnd <= r.end) ||
+        (slotStart <= r.start && slotEnd >= r.end)
+    );
+    slots.push({
+      time: minutesToTime(slotStart),
+      isAvailable: !overlaps,
+    });
+  }
+  return slots;
+}
+
+function getNext7OpenDates(openDays: number[]): string[] {
+  const dates: string[] = [];
+  for (let i = 0; i < 14 && dates.length < 7; i++) {
+    const d = addDays(new Date(), i);
+    if (openDays.includes(getDay(d))) {
+      dates.push(format(d, "yyyy-MM-dd"));
+    }
+  }
+  return dates;
+}
+
+async function getTenantById(tenantId: string): Promise<Tenant | null> {
+  const tenantDoc = await adminDb.collection("tenants").doc(tenantId).get();
+  if (!tenantDoc.exists) return null;
+  return { id: tenantDoc.id, ...tenantDoc.data() } as Tenant;
+}
+
+async function getChargePercent(): Promise<number> {
+  const snap = await adminDb.collection("systemSettings").doc("chargeConfig").get();
+  const data = snap.exists ? snap.data() : null;
+  const value = (data?.chargePercent as number) ?? 4.65;
+  return Number.isFinite(value) && value > 0 ? value : 4.65;
+}
+
+async function sendLineReply(replyToken: string, token: string, messages: object[]) {
+  const res = await fetch("https://api.line.me/v2/bot/message/reply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+    body: JSON.stringify({ replyToken, messages }),
+  });
+  const result = await res.json();
+  if (!res.ok) console.error("Line reply result:", JSON.stringify(result));
+}
+
+async function processEvents(tenantId: string, body: string) {
+  try {
+    const parsed = JSON.parse(body);
+    const tenant = await getTenantById(tenantId);
+    if (!tenant) return;
+
+    for (const event of parsed.events ?? []) {
+      if (event.type === "message" && event.message?.type === "text") {
+        const text = event.message.text.toLowerCase().trim();
+        const lineUserId = event.source?.userId;
+
+        if (text === "admin" && !tenant.adminLineUserId) {
+          await adminDb.collection("tenants").doc(tenantId).update({ adminLineUserId: lineUserId });
+          await sendLineReply(event.replyToken, tenant.lineChannelAccessToken, [
+            { type: "text", text: "✅ ระบบบันทึก Line ของคุณเป็น Admin แล้ว ตั้งแต่นี้คุณจะได้รับแจ้งเตือนการจองใหม่ทุกครั้ง" },
+          ]);
+          continue;
+        }
+      }
+
+      await handleEvent(event, tenant);
+    }
+  } catch (err) {
+    console.error("processEvents error:", err);
+  }
+}
+
+async function getLineProfile(tenant: Tenant, userId: string): Promise<{ displayName?: string; pictureUrl?: string }> {
+  const res = await fetch(`https://api.line.me/v2/bot/profile/${userId}`, {
+    headers: { Authorization: `Bearer ${tenant.lineChannelAccessToken}` },
+  });
+  const text = await res.text();
+  return text ? JSON.parse(text) : {};
+}
+
+async function getOrCreateCustomer(
   tenantId: string,
   tenant: Tenant,
-  event: WebhookEvent
-) {
+  lineUserId: string
+): Promise<{ id: string; displayName: string; pictureUrl: string; phone: string }> {
+  const existing = await adminDb
+    .collection("customers")
+    .where("tenantId", "==", tenantId)
+    .where("lineUserId", "==", lineUserId)
+    .limit(1)
+    .get();
+  if (!existing.empty) {
+    const d = existing.docs[0];
+    const data = d.data();
+    return {
+      id: d.id,
+      displayName: (data.displayName as string) ?? "",
+      pictureUrl: (data.pictureUrl as string) ?? "",
+      phone: (data.phone as string) ?? "",
+    };
+  }
+  const profile = await getLineProfile(tenant, lineUserId);
+  const customerRef = adminDb.collection("customers").doc();
+  const now = FieldValue.serverTimestamp();
+  await customerRef.set({
+    id: customerRef.id,
+    tenantId,
+    lineUserId,
+    displayName: profile.displayName ?? "",
+    pictureUrl: profile.pictureUrl ?? "",
+    phone: "",
+    isActive: true,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return {
+    id: customerRef.id,
+    displayName: profile.displayName ?? "",
+    pictureUrl: profile.pictureUrl ?? "",
+    phone: "",
+  };
+}
+
+async function handleEvent(event: WebhookEvent, tenant: Tenant) {
+  const tenantId = tenant.id;
+  const reply = (replyToken: string, messages: object[]) =>
+    sendLineReply(replyToken, tenant.lineChannelAccessToken, messages);
+
   if (event.type === "follow") {
-    await handleFollow(tenantId, tenant, event);
+    const lineUserId = (event.source as { userId?: string }).userId;
+    if (!lineUserId) return;
+    await getOrCreateCustomer(tenantId, tenant, lineUserId);
+    const [services, staff] = await Promise.all([getTenantServices(tenantId), getTenantStaff(tenantId)]);
+    const flex = buildShopInfoMessage(
+      { id: tenantId, name: tenant.name, businessType: tenant.businessType ?? "other" },
+      services,
+      staff,
+      { followOnly: true, useLinePostback: true }
+    );
+    await reply((event as { replyToken: string }).replyToken, [
+      { type: "flex", altText: `ยินดีต้อนรับสู่ ${tenant.name}`, contents: flex },
+    ]);
     return;
   }
+
   if (event.type === "unfollow") {
     await handleUnfollow(tenantId, event);
     return;
   }
-  if (event.type === "message" && event.message.type === "text") {
-    await handleMessage(tenantId, tenant, {
-      replyToken: event.replyToken,
-      message: { text: event.message.text },
-      source: event.source,
-    });
+
+  if (event.type === "message") {
+    if ((event as { message?: { type?: string } }).message?.type === "image") {
+      const lineUserId = (event.source as { userId?: string }).userId;
+      if (!lineUserId) return;
+      const tenantId = tenant.id;
+      const stateRef = adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("customerStates")
+        .doc(lineUserId);
+      const stateSnap = await stateRef.get();
+      if (stateSnap.exists && (stateSnap.data()?.state as string) === "waiting_slip") {
+        const stateData = stateSnap.data() as {
+          pendingDepositId: string;
+          serviceId: string;
+          date: string;
+          depositAmount?: number;
+        };
+        const depositsRef = adminDb
+          .collection("tenants")
+          .doc(tenantId)
+          .collection("pendingDeposits")
+          .doc(stateData.pendingDepositId);
+        await depositsRef.update({
+          status: "waiting_verify",
+          slipMessageId: (event as any).message.id,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        await stateRef.delete();
+        await reply((event as { replyToken: string }).replyToken, [
+          { type: "text", text: "ได้รับสลิปแล้วครับ ✅ กำลังตรวจสอบ กรุณารอสักครู่..." },
+        ]);
+        const profile = await getLineProfile(tenant, lineUserId);
+        const service = await getServiceDoc(tenantId, stateData.serviceId);
+        const depositAmount =
+          typeof stateData.depositAmount === "number" && stateData.depositAmount > 0
+            ? stateData.depositAmount
+            : ((service?.depositAmount as number) ?? 0);
+        if (tenant.adminLineUserId) {
+          await fetch("https://api.line.me/v2/bot/message/push", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${tenant.lineChannelAccessToken}`,
+            },
+            body: JSON.stringify({
+              to: tenant.adminLineUserId,
+              messages: [
+                {
+                  type: "flex",
+                  altText: "สลิปค่ามัดจำ",
+                  contents: {
+                    type: "bubble",
+                    header: {
+                      type: "box",
+                      layout: "vertical",
+                      backgroundColor: "#F59E0B",
+                      contents: [
+                        {
+                          type: "text",
+                          text: "📋 สลิปค่ามัดจำ",
+                          color: "#FFFFFF",
+                          weight: "bold",
+                          size: "lg",
+                        },
+                      ],
+                    },
+                    body: {
+                      type: "box",
+                      layout: "vertical",
+                      spacing: "md",
+                      contents: [
+                        {
+                          type: "text",
+                          text: `ลูกค้า: ${profile.displayName ?? ""}`,
+                          size: "sm",
+                          color: "#333333",
+                        },
+                        {
+                          type: "text",
+                          text: `บริการ: ${(service?.name as string) ?? ""}`,
+                          size: "sm",
+                          color: "#333333",
+                        },
+                        {
+                          type: "text",
+                          text: `ค่ามัดจำ: ฿${depositAmount.toLocaleString()}`,
+                          size: "sm",
+                          color: "#333333",
+                          weight: "bold",
+                        },
+                        {
+                          type: "text",
+                          text: "กรุณาตรวจสอบสลิปจากแชทลูกค้า",
+                          size: "xs",
+                          color: "#666666",
+                          wrap: true,
+                        },
+                      ],
+                    },
+                    footer: {
+                      type: "box",
+                      layout: "horizontal",
+                      spacing: "md",
+                      contents: [
+                        {
+                          type: "button",
+                          style: "primary",
+                          color: "#10B981",
+                          action: {
+                            type: "postback",
+                            label: "ยืนยัน ✅",
+                            data: `action=verify_deposit&depositId=${stateData.pendingDepositId}&serviceId=${stateData.serviceId}&date=${stateData.date}&customerId=${lineUserId}`,
+                          },
+                        },
+                        {
+                          type: "button",
+                          style: "secondary",
+                          action: {
+                            type: "postback",
+                            label: "ปฏิเสธ ❌",
+                            data: `action=reject_deposit&depositId=${stateData.pendingDepositId}&customerId=${lineUserId}`,
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            }),
+          });
+        }
+        return;
+      }
+    }
+    if ((event as { message?: { type?: string } }).message?.type === "text") {
+      const [services, staff] = await Promise.all([getTenantServices(tenantId), getTenantStaff(tenantId)]);
+      const flex = buildShopInfoMessage(
+        { id: tenantId, name: tenant.name, businessType: tenant.businessType ?? "other" },
+        services,
+        staff,
+        { useLinePostback: true }
+      );
+      await reply((event as { replyToken: string }).replyToken, [
+        { type: "flex", altText: tenant.name, contents: flex },
+      ]);
+    }
     return;
   }
-  if (event.type === "postback") {
-    await handlePostback(tenantId, tenant, event);
-  }
-}
 
-async function handleFollow(
-  tenantId: string,
-  tenant: Tenant,
-  event: { replyToken: string; source: { userId?: string } }
-) {
-  const lineUserId = event.source.userId;
-  if (!lineUserId) return;
-  const client = await getLineClient(tenantId);
-  const profile = await client.getProfile(lineUserId);
-  const customerRef = adminDb.collection("customers").doc();
-  const now = FieldValue.serverTimestamp();
-  const customer: Omit<Customer, "id"> & { id: string } = {
-    id: customerRef.id,
-    tenantId,
-    lineUserId,
-    displayName: profile.displayName,
-    pictureUrl: profile.pictureUrl ?? "",
-    phone: "",
-    isActive: true,
-    createdAt: now as Customer["createdAt"],
-    updatedAt: now as Customer["updatedAt"],
-  };
-  await customerRef.set(customer);
-  const welcomeFlex = buildWelcomeMessage(tenant.name);
-  await replyFlex(tenantId, event.replyToken, `ยินดีต้อนรับสู่ ${tenant.name}`, welcomeFlex);
+  if (event.type === "postback") {
+    await handlePostback(tenantId, tenant, event, reply);
+  }
 }
 
 async function handleUnfollow(
@@ -131,245 +576,13 @@ async function handleUnfollow(
   }
 }
 
-async function handleMessage(
-  tenantId: string,
-  tenant: Tenant,
-  event: {
-    replyToken: string;
-    message: { text: string };
-    source: { userId?: string };
-  }
-) {
-  const lineUserId = event.source.userId;
-  if (!lineUserId) return;
-  const text = event.message.text.trim();
-  const customerSnap = await adminDb
-    .collection("customers")
-    .where("tenantId", "==", tenantId)
-    .where("lineUserId", "==", lineUserId)
-    .where("isActive", "==", true)
-    .limit(1)
-    .get();
-  if (customerSnap.empty) return;
-  const customerDoc = customerSnap.docs[0];
-  const customerId = customerDoc.id;
-  const flowRef = adminDb
-    .collection("bookingFlowState")
-    .doc(`${tenantId}_${lineUserId}`);
-  const flowSnap = await flowRef.get();
-  const flowData = flowSnap.exists ? flowSnap.data() : null;
-  type FlowState = Omit<BookingFlowStateDoc, "updatedAt"> & {
-    updatedAt?: BookingFlowStateDoc["updatedAt"] | ReturnType<typeof FieldValue.serverTimestamp>;
-  };
-  const flow: FlowState = flowData
-    ? ({ ...flowData } as FlowState)
-    : {
-        tenantId,
-        customerId,
-        state: "idle",
-        selectedDate: null,
-        selectedTime: null,
-        selectedServiceId: null,
-        selectedStaffId: null,
-        updatedAt: FieldValue.serverTimestamp(),
-      };
-  const currentState = flow.state ?? "idle";
-  if (currentState === "idle") {
-    if (text === "จอง" || text.toLowerCase() === "booking") {
-      await flowRef.set({
-        ...flow,
-        state: "selecting_date",
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-      const dates = getAvailableDates(tenant.openDays);
-      await replyText(
-        tenantId,
-        event.replyToken,
-        `กรุณาเลือกวันที่ (ส่งเลขหรือวันที่ เช่น 1 หรือ ${dates[0]}):\n${dates.slice(0, 7).map((d, i) => `${i + 1}. ${d}`).join("\n")}`
-      );
-    } else {
-      await replyText(tenantId, event.replyToken, "พิมพ์ \"จอง\" เพื่อเริ่มต้นการจองคิว");
-    }
-    return;
-  }
-  if (currentState === "selecting_date") {
-    const dates = getAvailableDates(tenant.openDays);
-    const idx = parseInt(text, 10);
-    let dateStr: string;
-    if (idx >= 1 && idx <= dates.length) {
-      dateStr = dates[idx - 1];
-    } else if (/^\d{4}-\d{2}-\d{2}$/.test(text) && dates.includes(text)) {
-      dateStr = text;
-    } else {
-      await replyText(tenantId, event.replyToken, "กรุณาเลือกวันที่จากรายการ");
-      return;
-    }
-    await flowRef.set({
-      ...flow,
-      state: "selecting_time",
-      selectedDate: dateStr,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-    const slots = getTimeSlots(tenant.openTime, tenant.closeTime, tenant.slotDurationMinutes);
-    await replyText(
-      tenantId,
-      event.replyToken,
-      `กรุณาเลือกเวลา (ส่งเลข):\n${slots.map((s, i) => `${i + 1}. ${s}`).join("\n")}`
-    );
-    return;
-  }
-  if (currentState === "selecting_time") {
-    const slots = getTimeSlots(tenant.openTime, tenant.closeTime, tenant.slotDurationMinutes);
-    const idx = parseInt(text, 10);
-    if (idx < 1 || idx > slots.length) {
-      await replyText(tenantId, event.replyToken, "กรุณาเลือกเวลาจากรายการ");
-      return;
-    }
-    const selectedTime = slots[idx - 1];
-    await flowRef.set({
-      ...flow,
-      state: "selecting_service",
-      selectedTime,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-    const servicesSnap = await adminDb
-      .collection("services")
-      .where("tenantId", "==", tenantId)
-      .where("isActive", "==", true)
-      .get();
-    const services = servicesSnap.docs.map((d) => ({
-      id: d.id,
-      name: d.data().name as string,
-    }));
-    if (services.length === 0) {
-      await flowRef.set({
-        ...flow,
-        state: "idle",
-        selectedTime: null,
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-      await replyText(tenantId, event.replyToken, "ไม่มีบริการในขณะนี้");
-      return;
-    }
-    await replyText(
-      tenantId,
-      event.replyToken,
-      `กรุณาเลือกบริการ (ส่งเลข):\n${services.map((s, i) => `${i + 1}. ${s.name}`).join("\n")}`
-    );
-    return;
-  }
-  if (currentState === "selecting_service") {
-    const servicesSnap = await adminDb
-      .collection("services")
-      .where("tenantId", "==", tenantId)
-      .where("isActive", "==", true)
-      .get();
-    const services = servicesSnap.docs.map((d) => ({ id: d.id, name: d.data().name }));
-    const idx = parseInt(text, 10);
-    if (idx < 1 || idx > services.length) {
-      await replyText(tenantId, event.replyToken, "กรุณาเลือกบริการจากรายการ");
-      return;
-    }
-    const selectedServiceId = services[idx - 1].id;
-    const selectedServiceName = services[idx - 1].name;
-    await flowRef.set({
-      ...flow,
-      state: "selecting_staff",
-      selectedServiceId,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-    const staffSnap = await adminDb
-      .collection("staff")
-      .where("tenantId", "==", tenantId)
-      .where("isActive", "==", true)
-      .get();
-    const staffList = staffSnap.docs
-      .filter((d) => {
-        const data = d.data();
-        const serviceIds: string[] = data.serviceIds ?? [];
-        return serviceIds.includes(selectedServiceId);
-      })
-      .map((d) => ({ id: d.id, name: d.data().name }));
-    if (staffList.length === 0) {
-      await flowRef.set({
-        ...flow,
-        state: "selecting_service",
-        selectedServiceId: null,
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-      await replyText(tenantId, event.replyToken, "ไม่มีช่างว่างสำหรับบริการนี้");
-      return;
-    }
-    await replyText(
-      tenantId,
-      event.replyToken,
-      `กรุณาเลือกช่าง (ส่งเลข):\n${staffList.map((s, i) => `${i + 1}. ${s.name}`).join("\n")}`
-    );
-    return;
-  }
-  if (currentState === "selecting_staff") {
-    const staffSnap = await adminDb
-      .collection("staff")
-      .where("tenantId", "==", tenantId)
-      .where("isActive", "==", true)
-      .get();
-    const selectedServiceId = flow.selectedServiceId;
-    const staffList = staffSnap.docs
-      .filter((d) => (d.data().serviceIds ?? []).includes(selectedServiceId))
-      .map((d) => ({ id: d.id, name: d.data().name }));
-    const idx = parseInt(text, 10);
-    if (idx < 1 || idx > staffList.length) {
-      await replyText(tenantId, event.replyToken, "กรุณาเลือกช่างจากรายการ");
-      return;
-    }
-    const selectedStaffId = staffList[idx - 1].id;
-    const selectedStaffName = staffList[idx - 1].name;
-    const servicesSnap = await adminDb.collection("services").doc(flow.selectedServiceId ?? "").get();
-    const serviceName = servicesSnap.data()?.name ?? "";
-    const customerData = customerDoc.data();
-    const bookingRef = adminDb.collection("bookings").doc();
-    const now = FieldValue.serverTimestamp();
-    const booking: Omit<Booking, "id"> & { id: string } = {
-      id: bookingRef.id,
-      tenantId,
-      customerId,
-      customerName: (customerData as Customer).displayName,
-      customerLineId: lineUserId,
-      customerPhone: (customerData as Customer).phone ?? "",
-      serviceId: flow.selectedServiceId ?? "",
-      serviceName,
-      staffId: selectedStaffId,
-      staffName: selectedStaffName,
-      date: flow.selectedDate ?? "",
-      startTime: flow.selectedTime ?? "",
-      endTime: flow.selectedTime ?? "",
-      status: "open",
-      notes: "",
-      createdAt: now as Booking["createdAt"],
-      updatedAt: now as Booking["updatedAt"],
-    };
-    await bookingRef.set(booking);
-    const fullBooking = { ...booking, id: bookingRef.id } as Booking;
-    await notifyAdminNewBooking(tenantId, fullBooking).catch(() => {});
-    await flowRef.set({
-      tenantId,
-      customerId,
-      state: "confirming",
-      selectedDate: flow.selectedDate ?? null,
-      selectedTime: flow.selectedTime ?? null,
-      selectedServiceId: flow.selectedServiceId ?? null,
-      selectedStaffId,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-    const confirmFlex = buildBookingConfirmMessage({
-      id: bookingRef.id,
-      date: booking.date,
-      startTime: booking.startTime,
-      serviceName: booking.serviceName,
-      staffName: booking.staffName,
-    });
-    await replyFlex(tenantId, event.replyToken, "ยืนยันการจอง", confirmFlex);
-  }
+function parsePostbackParams(data: string): Record<string, string> {
+  const p = new URLSearchParams(data);
+  const out: Record<string, string> = {};
+  p.forEach((v, k) => {
+    out[k] = v;
+  });
+  return out;
 }
 
 async function handlePostback(
@@ -379,187 +592,864 @@ async function handlePostback(
     replyToken: string;
     postback: { data: string };
     source: { userId?: string };
-  }
+  },
+  sendLineReply: (replyToken: string, messages: object[]) => Promise<unknown>
 ) {
   const data = event.postback.data;
   const lineUserId = event.source.userId;
   if (!lineUserId) return;
+  const params = parsePostbackParams(data);
+  const action = params.action;
+
+  if (action === "start_booking") {
+    const openDays = tenant.openDays ?? [1, 2, 3, 4, 5, 6];
+    const dates = getNext7OpenDates(openDays);
+    if (dates.length === 0) {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่มีวันว่างใน 2 สัปดาห์ถัดไป" }]);
+      return;
+    }
+    const flex = buildLineDatePickerFlex(dates);
+    await sendLineReply(event.replyToken, [{ type: "flex", altText: "เลือกวันที่", contents: flex }]);
+    return;
+  }
+
+  if (action === "select_date") {
+    const date = params.date;
+    if (!date) return;
+    const services = await getTenantServices(tenantId);
+    if (services.length === 0) {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่มีบริการในขณะนี้" }]);
+      return;
+    }
+    const flex = buildLineServicesFlex(date, services);
+    await sendLineReply(event.replyToken, [{ type: "flex", altText: "เลือกบริการ", contents: flex }]);
+    return;
+  }
+
+  if (action === "select_service") {
+    const date = params.date;
+    const serviceId = params.serviceId;
+    if (!date || !serviceId) return;
+    const staffList = await getTenantStaff(tenantId);
+    const staffWithService = staffList.filter((s) =>
+      s.serviceIds.includes(serviceId)
+    );
+    const staffForFlex = staffWithService.map((s) => ({
+      id: s.id,
+      name: s.name,
+    }));
+    const flex = buildLineStaffFlex(date, serviceId, staffForFlex);
+    await sendLineReply(event.replyToken, [
+      { type: "flex", altText: "เลือกพนักงาน", contents: flex },
+    ]);
+    return;
+  }
+
+  if (action === "select_staff") {
+    const date = params.date;
+    const serviceId = params.serviceId;
+    const staffId = params.staffId;
+    if (!date || !serviceId || !staffId) return;
+    const slots = await getAvailableSlotsForStaff(tenantId, staffId, serviceId, date);
+    if (slots.length === 0) {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่มีเวลาว่างในวันนี้" }]);
+      return;
+    }
+    const flex = buildLineTimeSlotsFlex(date, serviceId, staffId, slots);
+    await sendLineReply(event.replyToken, [{ type: "flex", altText: "เลือกเวลา", contents: flex }]);
+    return;
+  }
+
+  if (action === "select_time") {
+    const date = params.date;
+    const serviceId = params.serviceId;
+    const staffId = params.staffId;
+    const time = params.time;
+    if (!date || !serviceId || !staffId || !time) return;
+    const serviceData = await getServiceDoc(tenantId, serviceId);
+    const staffData = staffId === "any" ? null : await getStaffDoc(tenantId, staffId);
+    const serviceName = (serviceData?.name as string) ?? "";
+    const staffName = staffId === "any" ? "ไม่ระบุ" : ((staffData?.name as string) ?? "");
+    const durationMinutes = (serviceData?.durationMinutes as number) ?? 60;
+    const price = (serviceData?.price as number) ?? 0;
+    const depositAmount = (serviceData?.depositAmount as number) ?? 0;
+    if (depositAmount > 0) {
+      if (tenant.depositMode === "auto") {
+        const chargePercent = await getChargePercent();
+        const chargeAmount =
+          Math.round(depositAmount * (chargePercent / 100) * 100) / 100;
+        const totalAmount = depositAmount + chargeAmount;
+        const contents: FlexContainer = {
+          type: "bubble",
+          header: {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "text",
+                text: "ชำระค่ามัดจำ",
+                weight: "bold",
+                size: "lg",
+                color: "#ffffff",
+              },
+            ],
+            backgroundColor: "#0D9488",
+            paddingAll: "md",
+          },
+          body: {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "text",
+                text: `บริการ: ${serviceName}`,
+                size: "sm",
+                wrap: true,
+              },
+              {
+                type: "text",
+                text: `ราคาบริการ: ฿${price.toLocaleString()}`,
+                size: "sm",
+                wrap: true,
+                margin: "xs",
+              },
+              {
+                type: "text",
+                text: `ช่าง: ${staffName}`,
+                size: "sm",
+                wrap: true,
+                margin: "xs",
+              },
+              {
+                type: "text",
+                text: `วันที่: ${date}`,
+                size: "sm",
+                wrap: true,
+                margin: "xs",
+              },
+              {
+                type: "text",
+                text: `เวลา: ${time}`,
+                size: "sm",
+                wrap: true,
+                margin: "xs",
+              },
+              { type: "separator", margin: "md" },
+              {
+                type: "text",
+                text: `ค่ามัดจำ: ฿${depositAmount.toLocaleString()}`,
+                size: "sm",
+                wrap: true,
+                margin: "xs",
+              },
+              {
+                type: "text",
+                text: `ค่าธรรมเนียม (${chargePercent.toFixed(
+                  2
+                )}%): ฿${chargeAmount.toLocaleString()}`,
+                size: "sm",
+                wrap: true,
+                margin: "xs",
+              },
+              { type: "separator", margin: "md" },
+              {
+                type: "text",
+                text: `ยอดชำระทั้งหมด: ฿${totalAmount.toLocaleString()}`,
+                weight: "bold",
+                size: "md",
+                wrap: true,
+                margin: "md",
+              },
+            ],
+            paddingAll: "md",
+          },
+          footer: {
+            type: "box",
+            layout: "horizontal",
+            contents: [
+              {
+                type: "button",
+                style: "primary",
+                action: {
+                  type: "postback",
+                  label: "ชำระเงิน",
+                  data: `action=pay_deposit_auto&serviceId=${serviceId}&staffId=${staffId}&date=${date}&time=${time}&amount=${depositAmount}&total=${totalAmount}`,
+                },
+              },
+              {
+                type: "button",
+                action: {
+                  type: "postback",
+                  label: "ยกเลิก",
+                  data: "action=cancel_flow",
+                },
+              },
+            ],
+            paddingAll: "md",
+          },
+        };
+        await sendLineReply(event.replyToken, [
+          { type: "flex", altText: "ชำระค่ามัดจำ", contents },
+        ]);
+        return;
+      }
+      const bankName = (tenant.bankName as string) ?? "";
+      const bankAccountNumber = (tenant.bankAccountNumber as string) ?? "";
+      const bankAccountName = (tenant.bankAccountName as string) ?? "";
+      const promptPayNumber = (tenant.promptPayNumber as string) ?? "";
+      const manualFlex: FlexContainer = {
+        type: "bubble",
+        header: {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: "ชำระค่ามัดจำ",
+              weight: "bold",
+              size: "lg",
+              color: "#ffffff",
+            },
+          ],
+          backgroundColor: "#0D9488",
+          paddingAll: "md",
+        },
+        body: {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: `บริการ: ${serviceName}`,
+              size: "sm",
+              wrap: true,
+            },
+            {
+              type: "text",
+              text: `ช่าง: ${staffName}`,
+              size: "sm",
+              wrap: true,
+              margin: "xs",
+            },
+            {
+              type: "text",
+              text: `วันที่: ${date}`,
+              size: "sm",
+              wrap: true,
+              margin: "xs",
+            },
+            {
+              type: "text",
+              text: `เวลา: ${time}`,
+              size: "sm",
+              wrap: true,
+              margin: "xs",
+            },
+            { type: "separator", margin: "md" },
+            {
+              type: "text",
+              text: `ค่ามัดจำ: ฿${depositAmount.toLocaleString()}`,
+              size: "sm",
+              wrap: true,
+              margin: "xs",
+            },
+            { type: "separator", margin: "md" },
+            {
+              type: "text",
+              text: "กรุณาโอนเงินมาที่:",
+              size: "sm",
+              weight: "bold",
+              wrap: true,
+              margin: "md",
+            },
+            {
+              type: "text",
+              text: `ธนาคาร: ${bankName || "-"}`,
+              size: "sm",
+              wrap: true,
+            },
+            {
+              type: "text",
+              text: `เลขบัญชี: ${bankAccountNumber || "-"}`,
+              size: "sm",
+              wrap: true,
+            },
+            {
+              type: "text",
+              text: `ชื่อบัญชี: ${bankAccountName || "-"}`,
+              size: "sm",
+              wrap: true,
+            },
+            promptPayNumber
+              ? {
+                  type: "text",
+                  text: `PromptPay: ${promptPayNumber}`,
+                  size: "sm",
+                  wrap: true,
+                }
+              : null,
+          ].filter(Boolean) as any[],
+          paddingAll: "md",
+        },
+        footer: {
+          type: "box",
+          layout: "horizontal",
+          contents: [
+            {
+              type: "button",
+              style: "primary",
+              action: {
+                type: "postback",
+                label: "ชำระเงิน (โอนเงิน)",
+                data: `action=deposit_transferred&serviceId=${serviceId}&staffId=${staffId}&date=${date}&time=${time}`,
+              },
+            },
+            {
+              type: "button",
+              action: {
+                type: "postback",
+                label: "ยกเลิก",
+                data: "action=cancel_flow",
+              },
+            },
+          ],
+          paddingAll: "md",
+        },
+      };
+      await sendLineReply(event.replyToken, [
+        { type: "flex", altText: "ชำระค่ามัดจำ", contents: manualFlex },
+      ]);
+      return;
+    }
+    const flex = buildLineBookingSummaryFlex({
+      date,
+      serviceId,
+      serviceName,
+      staffId,
+      staffName,
+      time,
+      durationMinutes,
+      price,
+    });
+    await sendLineReply(event.replyToken, [
+      { type: "flex", altText: "สรุปการจอง", contents: flex },
+    ]);
+    return;
+  }
+
+  if (action === "confirm_booking") {
+    const date = params.date;
+    const serviceId = params.serviceId;
+    const staffId = params.staffId;
+    const time = params.time;
+    if (!date || !serviceId || !staffId || !time) return;
+    const customer = await getOrCreateCustomer(tenantId, tenant, lineUserId);
+    const serviceData = await getServiceDoc(tenantId, serviceId);
+    const staffData = staffId === "any" ? null : await getStaffDoc(tenantId, staffId);
+    const serviceName = (serviceData?.name as string) ?? "";
+    const staffName = staffId === "any" ? "ไม่ระบุ" : ((staffData?.name as string) ?? "");
+    try {
+      const booking = await createBooking(tenantId, {
+        customerId: customer.id,
+        customerName: customer.displayName,
+        customerLineId: lineUserId,
+        customerPhone: customer.phone ?? "",
+        serviceId,
+        serviceName,
+        staffId,
+        staffName,
+        date,
+        startTime: time,
+        notes: "",
+      });
+      const successFlex = buildBookingSuccessMessage({ ...booking, status: "open" });
+      await sendLineReply(event.replyToken, [{ type: "flex", altText: "จองสำเร็จ รอการยืนยัน", contents: successFlex }]);
+      await notifyAdminNewBooking(tenantId, booking).catch(() => {});
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาด";
+      await sendLineReply(event.replyToken, [{ type: "text", text: msg }]);
+    }
+    return;
+  }
+
+  if (action === "cancel_flow") {
+    await sendLineReply(event.replyToken, [{ type: "text", text: "ยกเลิกการจองแล้ว กดจองคิวใหม่ได้เลยครับ" }]);
+    return;
+  }
+
+  if (action === "my_bookings") {
+    const customerSnap = await adminDb
+      .collection("customers")
+      .where("tenantId", "==", tenantId)
+      .where("lineUserId", "==", lineUserId)
+      .where("isActive", "==", true)
+      .limit(1)
+      .get();
+    if (customerSnap.empty) return;
+    const customerId = customerSnap.docs[0].id;
+    const today = format(new Date(), "yyyy-MM-dd");
+    const bookingsSnap = await adminDb
+      .collection("bookings")
+      .where("tenantId", "==", tenantId)
+      .where("customerId", "==", customerId)
+      .where("date", ">=", today)
+      .orderBy("date")
+      .limit(20)
+      .get();
+    const bookings = bookingsSnap.docs
+      .filter((d) => {
+        const s = d.data().status as string;
+        return s === "open" || s === "confirmed";
+      })
+      .slice(0, 10)
+      .map((d) => {
+        const b = d.data();
+        return {
+          id: d.id,
+          date: b.date as string,
+          startTime: b.startTime as string,
+          serviceName: b.serviceName as string,
+          staffName: b.staffName as string,
+        };
+      })
+      .sort((a, b) => (a.date !== b.date ? a.date.localeCompare(b.date) : a.startTime.localeCompare(b.startTime)));
+    const flex = buildLineMyBookingsFlex(bookings);
+    await sendLineReply(event.replyToken, [{ type: "flex", altText: "การจองของฉัน", contents: flex }]);
+    return;
+  }
+
+  if (action === "pay_deposit_auto") {
+    const serviceId = params.serviceId;
+    const staffId = params.staffId;
+    const date = params.date;
+    const time = params.time;
+    const amountStr = params.amount;
+    const totalStr = params.total;
+    if (!serviceId || !staffId || !date || !time || !amountStr || !totalStr)
+      return;
+    const total = parseFloat(totalStr);
+    const depositAmount = parseFloat(amountStr);
+    if (!Number.isFinite(total) || total <= 0) return;
+    console.log("pay_deposit_auto triggered", params);
+    const secretKey = process.env.OMISE_SECRET_KEY;
+    const authHeader =
+      "Basic " + Buffer.from(String(secretKey) + ":").toString("base64");
+    const satang = Math.round(total * 100);
+    const sourceRes = await fetch("https://api.omise.co/sources", {
+      method: "POST",
+      headers: {
+        Authorization: authHeader,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        type: "promptpay",
+        amount: String(satang),
+        currency: "thb",
+      }),
+    });
+    const source: any = await sourceRes.json();
+    console.log("Omise source response:", source);
+    if (source.object === "error") {
+      throw new Error(String(source.message || "Omise source error"));
+    }
+    const chargeRes = await fetch("https://api.omise.co/charges", {
+      method: "POST",
+      headers: {
+        Authorization: authHeader,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        amount: String(satang),
+        currency: "thb",
+        source: String(source.id),
+        "metadata[tenantId]": tenantId,
+        "metadata[lineUserId]": lineUserId || "",
+        "metadata[serviceId]": serviceId || "",
+        "metadata[date]": date || "",
+        "metadata[depositAmount]": String(depositAmount),
+      }),
+    });
+    const charge: any = await chargeRes.json();
+    console.log("Omise charge response:", charge);
+    if (charge.object === "error") {
+      throw new Error(String(charge.message || "Omise charge error"));
+    }
+    console.log(
+      "QR code data:",
+      JSON.stringify(charge.source?.scannable_code, null, 2)
+    );
+    const scannable = charge.source?.scannable_code;
+    const rawQrUrl: string =
+      (scannable &&
+        scannable.image &&
+        (scannable.image.download_uri || scannable.image.url)) ||
+      "";
+    console.log("QR code URL (raw):", rawQrUrl);
+    const qrUrl =
+      (await getOmiseQrPublicUrl(
+        rawQrUrl,
+        process.env.OMISE_SECRET_KEY || ""
+      )) || "";
+    if (!qrUrl) {
+      await sendLineReply(event.replyToken, [
+        {
+          type: "text",
+          text: `กรุณาชำระเงินจำนวน ฿${total.toLocaleString()} ผ่าน PromptPay`,
+        },
+      ]);
+      return;
+    }
+    const pendingRef = adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("pendingDeposits")
+      .doc(charge.id);
+    await pendingRef.set({
+      lineUserId,
+      serviceId,
+      staffId,
+      date,
+      time,
+      depositAmount,
+      totalAmount: total,
+      chargeId: charge.id,
+      status: "pending",
+      mode: "auto",
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    const flex: FlexContainer = {
+      type: "bubble",
+      header: {
+        type: "box",
+        layout: "vertical",
+        contents: [
+          {
+            type: "text",
+            text: "สแกนเพื่อชำระเงิน",
+            weight: "bold",
+            size: "lg",
+            color: "#ffffff",
+          },
+        ],
+        backgroundColor: "#0D9488",
+        paddingAll: "md",
+      },
+      body: {
+        type: "box",
+        layout: "vertical",
+        spacing: "md",
+        contents: [
+          {
+            type: "image",
+            url: qrUrl,
+            size: "full",
+            aspectRatio: "1:1",
+            aspectMode: "cover",
+          },
+          {
+            type: "text",
+            text: `ยอดชำระ: ฿${total.toLocaleString()}`,
+            size: "md",
+            weight: "bold",
+            wrap: true,
+          },
+          {
+            type: "text",
+            text: "กรุณาสแกน QR Code ด้านบน",
+            size: "sm",
+            wrap: true,
+          },
+          {
+            type: "text",
+            text: "ระบบจะตรวจสอบอัตโนมัติ ✨",
+            size: "sm",
+            wrap: true,
+          },
+        ],
+        paddingAll: "md",
+      },
+    };
+    await sendLineReply(event.replyToken, [
+      { type: "flex", altText: "ชำระเงินมัดจำ", contents: flex },
+    ]);
+    return;
+  }
+
+  if (action === "deposit_transferred") {
+    const serviceId = params.serviceId;
+    const staffId = params.staffId;
+    const date = params.date;
+    const time = params.time;
+    if (!serviceId || !staffId || !date || !time) return;
+    const serviceData = await getServiceDoc(tenantId, serviceId);
+    const depositAmount = (serviceData?.depositAmount as number) ?? 0;
+    const depositsCol = adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("pendingDeposits");
+    const pendingRef = depositsCol.doc();
+    const pendingId = pendingRef.id;
+    await pendingRef.set({
+      lineUserId,
+      serviceId,
+      staffId,
+      date,
+      time,
+      depositAmount,
+      status: "waiting_slip",
+      mode: "manual",
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    const stateRef = adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("customerStates")
+      .doc(lineUserId);
+    await stateRef.set({
+      state: "waiting_slip",
+      serviceId,
+      staffId,
+      date,
+      time,
+      pendingDepositId: pendingId,
+      depositAmount,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    await sendLineReply(event.replyToken, [
+      {
+        type: "text",
+        text: "กรุณาส่งรูปสลิปการโอนเงินมาที่แชทนี้เลยครับ 📸",
+      },
+    ]);
+    return;
+  }
+
+  if (action === "verify_deposit") {
+    const depositId = params.depositId;
+    const customerId = params.customerId;
+    if (!depositId || !customerId) return;
+    const depositRef = adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("pendingDeposits")
+      .doc(depositId);
+    const depositSnap = await depositRef.get();
+    const depositData = depositSnap.data() || {};
+    const depositAmount = Number(depositData.depositAmount ?? 0) || 0;
+    const serviceId = depositData.serviceId as string;
+    const staffId = (depositData.staffId as string) || "any";
+    const date = depositData.date as string;
+    const time = depositData.time as string;
+    const lineUserId = (depositData.lineUserId as string) || customerId;
+    if (!serviceId || !date || !time || depositAmount <= 0) return;
+    await depositRef.update({
+      status: "verified",
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    const serviceData = await getServiceDoc(tenantId, serviceId);
+    const staffData = staffId === "any" ? null : await getStaffDoc(tenantId, staffId);
+    const price = (serviceData?.price as number) ?? 0;
+    const durationMinutes = (serviceData?.durationMinutes as number) ?? 60;
+    const serviceName = (serviceData?.name as string) ?? "";
+    const staffName = staffId === "any" ? "ไม่ระบุ" : ((staffData?.name as string) ?? "");
+    const remainingAmount = Math.max(price - depositAmount, 0);
+    const endTime = calculateEndTime(time, durationMinutes);
+    const profile = await getLineProfile(tenant, lineUserId);
+    const bookingRef = await adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("bookings")
+      .add({
+      tenantId,
+      customerId: lineUserId,
+      customerName: profile.displayName ?? "",
+      customerLineId: lineUserId,
+      serviceId,
+      serviceName,
+      staffId,
+      staffName,
+      date,
+      startTime: time,
+      endTime,
+      status: "confirmed",
+      depositAmount,
+      depositStatus: "paid",
+      depositPaidAt: FieldValue.serverTimestamp(),
+      remainingAmount,
+      remainingStatus: remainingAmount > 0 ? "pending" : "paid",
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    await adminDb.collection("depositTransactions").add({
+      tenantId,
+      tenantName: tenant.name ?? "",
+      bookingId: bookingRef.id,
+      customerId: lineUserId,
+      customerName: profile.displayName ?? "",
+      serviceName,
+      amount: depositAmount,
+      totalCharged: depositAmount,
+      chargePercent: 0,
+      chargeAmount: 0,
+      omiseFee: 0,
+      shopReceiveAmount: depositAmount,
+      superAdminReceiveAmount: 0,
+      mode: "manual",
+      status: "completed",
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    await fetch("https://api.line.me/v2/bot/message/push", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${tenant.lineChannelAccessToken}`,
+      },
+      body: JSON.stringify({
+        to: lineUserId,
+        messages: [
+          {
+            type: "text",
+            text: `🎉 จองสำเร็จ!\n\nบริการ: ${serviceName}\nช่าง: ${staffName}\nวันที่: ${date}\nเวลา: ${time}\n\n💰 ชำระมัดจำแล้ว: ฿${depositAmount.toLocaleString()}\n💵 ยอดคงเหลือชำระที่ร้าน: ฿${remainingAmount.toLocaleString()}`,
+          },
+        ],
+      }),
+    });
+    await sendLineReply(event.replyToken, [
+      {
+        type: "text",
+        text: `✅ ยืนยันมัดจำเรียบร้อย\n\nลูกค้า: ${profile.displayName ?? ""}\nบริการ: ${serviceName}\nวันที่: ${date} เวลา: ${time}\nมัดจำ: ฿${depositAmount.toLocaleString()}\n\nระบบสร้างการจองให้แล้ว`,
+      },
+    ]);
+    return;
+  }
+
+  if (action === "reject_deposit") {
+    const depositId = params.depositId;
+    const customerId = params.customerId;
+    if (!depositId || !customerId) return;
+    const depositRef = adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("pendingDeposits")
+      .doc(depositId);
+    await depositRef.update({
+      status: "rejected",
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    const stateRef = adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("customerStates")
+      .doc(customerId);
+    await stateRef.set({
+      state: "waiting_slip",
+      pendingDepositId: depositId,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    await fetch("https://api.line.me/v2/bot/message/push", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${tenant.lineChannelAccessToken}`,
+      },
+      body: JSON.stringify({
+        to: customerId,
+        messages: [
+          {
+            type: "text",
+            text: "สลิปไม่ถูกต้อง ❌\nกรุณาโอนเงินใหม่และส่งรูปสลิปมาอีกครั้งครับ",
+          },
+        ],
+      }),
+    });
+    await sendLineReply(event.replyToken, [
+      {
+        type: "text",
+        text: "❌ ปฏิเสธสลิปแล้ว ระบบแจ้งลูกค้าให้ส่งสลิปใหม่แล้ว",
+      },
+    ]);
+    return;
+  }
+
+  if (action === "cancel_booking") {
+    const bookingId = params.bookingId;
+    if (!bookingId) return;
+    const bookingRef = adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("bookings")
+      .doc(bookingId);
+    const snap = await bookingRef.get();
+    if (!snap.exists) {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่พบการจอง" }]);
+      return;
+    }
+    const b = snap.data();
+    if (b?.tenantId !== tenantId || (b?.customerLineId as string) !== lineUserId) {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่พบการจอง" }]);
+      return;
+    }
+    const flex = buildLineCancelConfirmFlex(bookingId);
+    await sendLineReply(event.replyToken, [{ type: "flex", altText: "ยกเลิกการจอง?", contents: flex }]);
+    return;
+  }
+
+  if (action === "cancel_booking_confirm") {
+    const bookingId = params.bookingId;
+    if (!bookingId) return;
+    try {
+      const booking = await cancelBooking(tenantId, bookingId, lineUserId);
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ยกเลิกการจองแล้ว" }]);
+      await notifyAdminBookingCancelledByUser(tenantId, booking).catch(() => {});
+    } catch {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่สามารถยกเลิกได้" }]);
+    }
+    return;
+  }
+
   if (data.startsWith("confirm_booking:")) {
     const bookingId = data.replace("confirm_booking:", "");
-    const bookingRef = adminDb.collection("bookings").doc(bookingId);
+    const bookingRef = adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("bookings")
+      .doc(bookingId);
     const bookingSnap = await bookingRef.get();
     if (!bookingSnap.exists) {
-      await replyText(tenantId, event.replyToken, "ไม่พบการจอง");
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่พบการจอง" }]);
       return;
     }
     const booking = { id: bookingSnap.id, ...bookingSnap.data() } as Booking;
+    if (booking.tenantId !== tenantId || booking.customerLineId !== lineUserId) return;
     await bookingRef.update({
       status: "confirmed",
       updatedAt: FieldValue.serverTimestamp(),
     });
-    const flowRef = adminDb.collection("bookingFlowState").doc(`${tenantId}_${lineUserId}`);
-    await flowRef.set({
-      tenantId,
-      customerId: booking.customerId,
-      state: "completed",
-      selectedDate: null,
-      selectedTime: null,
-      selectedServiceId: null,
-      selectedStaffId: null,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
     const successFlex = buildBookingSuccessMessage({ ...booking, status: "confirmed" });
-    await replyFlex(tenantId, event.replyToken, "จองสำเร็จ", successFlex);
+    await sendLineReply(event.replyToken, [{ type: "flex", altText: "จองสำเร็จ", contents: successFlex }]);
     return;
   }
-  if (data.startsWith("cancel_booking:")) {
+
+  if (data.startsWith("cancel_booking:") && !params.action) {
     const bookingId = data.replace("cancel_booking:", "");
-    const bookingRef = adminDb.collection("bookings").doc(bookingId);
+    const bookingRef = adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("bookings")
+      .doc(bookingId);
     const bookingSnap = await bookingRef.get();
     if (!bookingSnap.exists) {
-      await replyText(tenantId, event.replyToken, "ไม่พบการจอง");
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่พบการจอง" }]);
       return;
     }
     const booking = { id: bookingSnap.id, ...bookingSnap.data() } as Booking;
+    if (booking.tenantId !== tenantId || booking.customerLineId !== lineUserId) return;
     await bookingRef.update({
       status: "user_cancelled",
       updatedAt: FieldValue.serverTimestamp(),
     });
-    const flowRef = adminDb.collection("bookingFlowState").doc(`${tenantId}_${lineUserId}`);
-    await flowRef.set({
-      tenantId,
-      customerId: booking.customerId,
-      state: "idle",
-      selectedDate: null,
-      selectedTime: null,
-      selectedServiceId: null,
-      selectedStaffId: null,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
     const cancelledFlex = buildBookingCancelledMessage({ ...booking, status: "user_cancelled" });
-    await replyFlex(tenantId, event.replyToken, "ยกเลิกการจองแล้ว", cancelledFlex);
+    await sendLineReply(event.replyToken, [{ type: "flex", altText: "ยกเลิกการจองแล้ว", contents: cancelledFlex }]);
     await notifyAdminBookingCancelledByUser(tenantId, { ...booking, status: "user_cancelled" }).catch(() => {});
-    return;
   }
-  const userCancelMatch = data.match(/^action=user_cancel&bookingId=(.+)$/);
-  if (userCancelMatch) {
-    const bookingId = userCancelMatch[1];
-    try {
-      const booking = await cancelBooking(tenantId, bookingId, lineUserId);
-      await notifyAdminBookingCancelledByUser(tenantId, booking).catch(() => {});
-      await replyText(tenantId, event.replyToken, "ยกเลิกการจองแล้ว");
-    } catch {
-      await replyText(tenantId, event.replyToken, "ไม่สามารถยกเลิกได้");
-    }
-    return;
-  }
-  const rescheduleMatch = data.match(/^action=reschedule&bookingId=(.+)$/);
-  if (rescheduleMatch) {
-    const bookingId = rescheduleMatch[1];
-    const bookingRef = adminDb.collection("bookings").doc(bookingId);
-    const bookingSnap = await bookingRef.get();
-    if (!bookingSnap.exists) {
-      await replyText(tenantId, event.replyToken, "ไม่พบการจอง");
-      return;
-    }
-    const bookingData = bookingSnap.data();
-    if (bookingData?.tenantId !== tenantId || (bookingData?.customerLineId as string) !== lineUserId) {
-      await replyText(tenantId, event.replyToken, "ไม่พบการจอง");
-      return;
-    }
-    const booking = { id: bookingSnap.id, ...bookingData } as Booking;
-    const flex = buildRescheduleMessage(booking, tenant.name);
-    await replyFlex(tenantId, event.replyToken, "เลื่อนนัดหมาย", flex);
-    return;
-  }
-  const confirmMatch = data.match(/^action=confirm&bookingId=(.+)$/);
-  if (confirmMatch) {
-    const bookingId = confirmMatch[1];
-    const bookingRef = adminDb.collection("bookings").doc(bookingId);
-    const bookingSnap = await bookingRef.get();
-    if (!bookingSnap.exists) {
-      await replyText(tenantId, event.replyToken, "ไม่พบการจอง");
-      return;
-    }
-    const bookingData = bookingSnap.data();
-    if (bookingData?.tenantId !== tenantId) {
-      await replyText(tenantId, event.replyToken, "การจองไม่ตรงกับร้าน");
-      return;
-    }
-    const booking = { id: bookingSnap.id, ...bookingData } as Booking;
-    await bookingRef.update({
-      status: "confirmed",
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-    await notifyCustomerBookingConfirmed(tenantId, { ...booking, status: "confirmed" }).catch(() => {});
-    await replyText(tenantId, event.replyToken, "ยืนยันการจองแล้ว");
-    return;
-  }
-  const adminCancelMatch = data.match(/^action=admin_cancel&bookingId=(.+)$/);
-  if (adminCancelMatch) {
-    const bookingId = adminCancelMatch[1];
-    const bookingRef = adminDb.collection("bookings").doc(bookingId);
-    const bookingSnap = await bookingRef.get();
-    if (!bookingSnap.exists) {
-      await replyText(tenantId, event.replyToken, "ไม่พบการจอง");
-      return;
-    }
-    const bookingData = bookingSnap.data();
-    if (bookingData?.tenantId !== tenantId) {
-      await replyText(tenantId, event.replyToken, "การจองไม่ตรงกับร้าน");
-      return;
-    }
-    const booking = { id: bookingSnap.id, ...bookingData } as Booking;
-    await bookingRef.update({
-      status: "admin_cancelled",
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-    await notifyCustomerBookingCancelledByAdmin(tenantId, { ...booking, status: "admin_cancelled" }).catch(() => {});
-    await replyText(tenantId, event.replyToken, "ปฏิเสธการจองแล้ว");
-    return;
-  }
-  if (data.startsWith("reschedule:")) {
-    const bookingId = data.replace("reschedule:", "");
-    const flowRef = adminDb.collection("bookingFlowState").doc(`${tenantId}_${lineUserId}`);
-    await flowRef.set({
-      tenantId,
-      customerId: (await adminDb.collection("bookings").doc(bookingId).get()).data()?.customerId,
-      state: "selecting_date",
-      selectedDate: null,
-      selectedTime: null,
-      selectedServiceId: null,
-      selectedStaffId: null,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-    await replyText(tenantId, event.replyToken, "กรุณาเลือกวันที่ใหม่");
-  }
-}
-
-function getAvailableDates(openDays: number[]): string[] {
-  const dates: string[] = [];
-  for (let i = 0; i < 14; i++) {
-    const d = addDays(new Date(), i);
-    if (openDays.includes(getDay(d))) {
-      dates.push(format(d, "yyyy-MM-dd"));
-    }
-  }
-  return dates;
-}
-
-function getTimeSlots(
-  openTime: string,
-  closeTime: string,
-  slotDurationMinutes: number
-): string[] {
-  const [openH, openM] = openTime.split(":").map(Number);
-  const [closeH, closeM] = closeTime.split(":").map(Number);
-  const openMinutes = openH * 60 + openM;
-  const closeMinutes = closeH * 60 + closeM;
-  const slots: string[] = [];
-  for (let m = openMinutes; m + slotDurationMinutes <= closeMinutes; m += slotDurationMinutes) {
-    const h = Math.floor(m / 60);
-    const min = m % 60;
-    slots.push(`${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`);
-  }
-  return slots;
 }

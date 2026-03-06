@@ -11,7 +11,10 @@ export type BookingStatus =
   | "open"
   | "confirmed"
   | "user_cancelled"
-  | "admin_cancelled";
+  | "admin_cancelled"
+  | "completed";
+
+export type TenantPlan = "trial" | "basic" | "pro" | "enterprise";
 
 export interface Tenant {
   id: string;
@@ -30,7 +33,14 @@ export interface Tenant {
   openTime: string;
   closeTime: string;
   slotDurationMinutes: number;
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountName: string;
+  promptPayNumber: string;
+  depositMode: "auto" | "manual";
   isActive: boolean;
+  plan: TenantPlan;
+  licenseExpiry: Timestamp | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -42,6 +52,7 @@ export interface Service {
   description: string;
   durationMinutes: number;
   price: number;
+  depositAmount: number;
   imageUrl: string;
   isActive: boolean;
   createdAt: Timestamp;
@@ -79,8 +90,48 @@ export interface Booking {
   status: BookingStatus;
   notes: string;
   price?: number;
+  depositAmount: number;
+  depositStatus: "none" | "pending" | "paid" | "verified";
+  depositPaidAt: Timestamp | null;
+  depositChargeId: string;
+  remainingAmount: number;
+  remainingPaidAt: Timestamp | null;
+  remainingStatus: "pending" | "paid";
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+export interface DepositTransaction {
+  id: string;
+  tenantId: string;
+  bookingId: string;
+  customerId: string;
+  customerName: string;
+  tenantName?: string;
+  serviceName?: string;
+  amount: number;
+  totalCharged?: number;
+  chargePercent: number;
+  chargeAmount: number;
+  omiseFee: number;
+  shopReceiveAmount: number;
+  superAdminReceiveAmount: number;
+  mode: "auto" | "manual";
+  status: "pending" | "completed" | "failed";
+  createdAt: Timestamp;
+}
+
+export interface ShopPayout {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  totalAmount: number;
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountName: string;
+  status: "pending" | "paid";
+  paidAt: Timestamp | null;
+  createdAt: Timestamp;
 }
 
 export interface BookingFilters {
@@ -110,6 +161,12 @@ export type BookingFlowState =
   | "selecting_staff"
   | "confirming"
   | "completed";
+
+export interface UserDoc {
+  isSuperAdmin?: boolean;
+  email?: string;
+  createdAt?: Timestamp;
+}
 
 export interface BookingFlowStateDoc {
   tenantId: string;

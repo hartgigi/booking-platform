@@ -23,7 +23,12 @@ export async function POST(
         { status: 400 }
       );
     }
-    const doc = await adminDb.collection("bookings").doc(bookingId).get();
+    const doc = await adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("bookings")
+      .doc(bookingId)
+      .get();
     if (!doc.exists) {
       return NextResponse.json({ error: "ไม่พบการจอง" }, { status: 404 });
     }

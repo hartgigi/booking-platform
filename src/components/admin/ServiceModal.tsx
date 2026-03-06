@@ -1,288 +1,187 @@
-"use client";
+ "use client"
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import { X } from 'lucide-react'
+import { createService, updateService } from '@/lib/firebase/services'
+import type { Service } from '@/types'
 
-import { useState, useRef } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import {
-  createService,
-  updateService,
-  type CreateServiceData,
-  type UpdateServiceData,
-} from "@/lib/firebase/services";
-import { uploadServiceImage } from "@/lib/firebase/storage";
-import { cn } from "@/lib/utils/cn";
-import type { Service } from "@/types";
-
-const schema = z.object({
-  name: z.string().min(2, "ชื่อต้องมีอย่างน้อย 2 ตัวอักษร"),
-  description: z.string(),
-  durationMinutes: z
-    .number()
-    .min(15, "ระยะเวลาต้องอย่างน้อย 15 นาที")
-    .max(480, "ระยะเวลาไม่เกิน 480 นาที"),
-  price: z.number().min(0, "ราคาต้องไม่ต่ำกว่า 0"),
-  imageUrl: z
-    .string()
-    .optional()
-    .refine((v) => !v || v === "" || /^https?:\/\/.+/.test(v), "รูปแบบ URL ไม่ถูกต้อง"),
-});
-
-type FormData = z.infer<typeof schema>;
-
-interface ServiceModalProps {
-  tenantId: string;
-  service: Service | null;
-  onClose: () => void;
-  onSuccess: () => void;
+interface Props {
+  tenantId: string
+  service?: Service | null
+  onClose: () => void
+  onSuccess: () => void
 }
 
-export function ServiceModal({
-  tenantId,
-  service,
-  onClose,
-  onSuccess,
-}: ServiceModalProps) {
-  const isEdit = !!service;
-  const [uploading, setUploading] = useState(false);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: service
-      ? {
-          name: service.name,
-          description: service.description,
-          durationMinutes: service.durationMinutes,
-          price: service.price,
-          imageUrl: service.imageUrl || "",
-        }
-      : {
-          name: "",
-          description: "",
-          durationMinutes: 60,
-          price: 0,
-          imageUrl: "",
-        },
-  });
+export default function ServiceModal({ tenantId, service, onClose, onSuccess }: Props) {
+  const isEdit = !!service
+  const [name, setName] = useState(service?.name ?? '')
+  const [description, setDescription] = useState(service?.description ?? '')
+  const [duration, setDuration] = useState(service?.durationMinutes ?? 60)
+  const [price, setPrice] = useState(service?.price ?? 0)
+  const [deposit, setDeposit] = useState(service?.depositAmount ?? 0)
+  const [loading, setLoading] = useState(false)
 
-  const imageUrl = watch("imageUrl");
-
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
-    if (isEdit) {
-      setUploading(true);
-      try {
-        const url = await uploadServiceImage(tenantId, service.id, file);
-        setValue("imageUrl", url);
-      } catch {
-        setValue("imageUrl", "");
-      } finally {
-        setUploading(false);
-      }
-    } else {
-      setPendingFile(file);
-      setValue("imageUrl", URL.createObjectURL(file));
+  useEffect(() => {
+    if (service) {
+      setName(service.name ?? '')
+      setDescription(service.description ?? '')
+      setDuration(service.durationMinutes ?? 60)
+      setPrice(service.price ?? 0)
+      setDeposit(service.depositAmount ?? 0)
     }
-    e.target.value = "";
-  }
+  }, [service])
 
-  async function onSubmit(data: FormData) {
+  async function handleSubmit() {
+    if (!name.trim()) return
+    setLoading(true)
     try {
+      const depositAmount = Number(deposit) || 0
       if (isEdit) {
-        const updateData: UpdateServiceData = {
-          name: data.name,
-          description: data.description,
-          durationMinutes: data.durationMinutes,
-          price: data.price,
-          imageUrl: data.imageUrl?.trim() || "",
-        };
-        await updateService(tenantId, service.id, updateData);
-      } else {
-        const initialImageUrl = pendingFile ? "" : (data.imageUrl?.trim() || "");
-        const createData: CreateServiceData = {
-          name: data.name,
-          description: data.description,
-          durationMinutes: data.durationMinutes,
-          price: data.price,
-          imageUrl: initialImageUrl,
-          isActive: true,
-        };
-        const id = await createService(tenantId, createData);
-        if (pendingFile) {
-          const url = await uploadServiceImage(tenantId, id, pendingFile);
-          await updateService(tenantId, id, { imageUrl: url });
+        const data = {
+          name,
+          description,
+          durationMinutes: duration,
+          price,
+          depositAmount,
         }
+        console.log('ServiceModal update payload', data)
+        await updateService(tenantId, service!.id, data)
+      } else {
+        const data = {
+          name,
+          description,
+          durationMinutes: duration,
+          price,
+          depositAmount,
+          imageUrl: '',
+          isActive: true,
+        }
+        console.log('ServiceModal create payload', data)
+        await createService(tenantId, data)
       }
-      onSuccess();
-      onClose();
+      onSuccess()
+      onClose()
     } catch (err) {
-      console.error(err);
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
   }
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
-    >
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
+    <>
       <div
-        className="w-full max-w-md rounded-2xl border border-(--border-default) bg-(--surface-secondary) shadow-2xl animate-modal-in"
-        onClick={(e) => e.stopPropagation()}
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: 'rgba(0,0,0,0.4)',
+          zIndex: 99998,
+        }}
+      />
+      <div
+        style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 99999,
+          width: '100%',
+          maxWidth: '28rem',
+          padding: '0 16px',
+        }}
       >
-        <div className="p-6 border-b border-(--border-subtle)">
-          <h2 className="text-lg font-semibold text-(--text-primary)">
-            {isEdit ? "แก้ไขบริการ" : "เพิ่มบริการ"}
-          </h2>
-        </div>
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
-          <div className="relative">
-            <input
-              type="text"
-              className={cn(
-                "peer w-full rounded-lg border bg-(--surface-tertiary) pt-5 px-4 pb-2 text-(--text-primary) placeholder-transparent outline-none focus:ring-2 focus:ring-(--brand-primary)/50 focus:border-(--brand-primary) transition",
-                errors.name ? "border-(--error)" : "border-(--border-default)"
-              )}
-              placeholder=" "
-              {...register("name")}
-            />
-            <label className="absolute left-4 top-1/2 -translate-y-1/2 text-(--text-muted) text-sm transition-all duration-200 pointer-events-none peer-focus:top-3 peer-focus:translate-y-0 peer-focus:text-xs peer-focus:text-(--brand-primary) peer-[:not(:placeholder-shown)]:top-3 peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:text-xs">
-              ชื่อบริการ *
-            </label>
-            {errors.name && (
-              <p className="text-(--error) text-xs mt-1">{errors.name.message}</p>
-            )}
+        <div className="bg-white rounded-2xl shadow-2xl w-full overflow-hidden">
+          <div className="bg-linear-to-r from-teal-600 to-cyan-500 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+            <h2 className="text-white font-semibold text-lg">{isEdit ? 'แก้ไขบริการ' : 'เพิ่มบริการ'}</h2>
+            <button onClick={onClose} className="text-white/80 hover:text-white transition-colors">
+              <X size={20} />
+            </button>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-(--text-secondary) mb-1">
-              คำอธิบาย
-            </label>
-            <textarea
-              rows={3}
-              className={cn(
-                "w-full rounded-lg border bg-(--surface-tertiary) px-4 py-2.5 text-(--text-primary) placeholder-(--text-muted) outline-none focus:ring-2 focus:ring-(--brand-primary)/50 focus:border-(--brand-primary) resize-none transition",
-                errors.description ? "border-(--error)" : "border-(--border-default)"
-              )}
-              placeholder="รายละเอียดบริการ"
-              {...register("description")}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="p-6 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-(--text-secondary) mb-1">
-                ระยะเวลา (นาที) *
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">ชื่อบริการ *</label>
               <input
-                type="number"
-                min={15}
-                max={480}
-                step={15}
-                className={cn(
-                  "w-full rounded-lg border bg-(--surface-tertiary) px-4 py-2.5 text-(--text-primary) outline-none focus:ring-2 focus:ring-(--brand-primary)/50 focus:border-(--brand-primary) transition",
-                  errors.durationMinutes ? "border-(--error)" : "border-(--border-default)"
-                )}
-                {...register("durationMinutes", { valueAsNumber: true })}
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="เช่น ตัดผมชาย"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
               />
-              {errors.durationMinutes && (
-                <p className="text-(--error) text-xs mt-1">
-                  {errors.durationMinutes.message}
-                </p>
-              )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-(--text-secondary) mb-1">
-                ราคา (บาท) *
-              </label>
-              <input
-                type="number"
-                min={0}
-                step={1}
-                className={cn(
-                  "w-full rounded-lg border bg-(--surface-tertiary) px-4 py-2.5 text-(--text-primary) outline-none focus:ring-2 focus:ring-(--brand-primary)/50 focus:border-(--brand-primary) transition",
-                  errors.price ? "border-(--error)" : "border-(--border-default)"
-                )}
-                {...register("price", { valueAsNumber: true })}
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">คำอธิบาย</label>
+              <textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                rows={3}
+                placeholder="รายละเอียดบริการ"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm resize-none"
               />
-              {errors.price && (
-                <p className="text-(--error) text-xs mt-1">
-                  {errors.price.message}
-                </p>
-              )}
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-(--text-secondary) mb-1">
-              รูปภาพ
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                className={cn(
-                  "flex-1 rounded-lg border bg-(--surface-tertiary) px-4 py-2.5 text-(--text-primary) placeholder-(--text-muted) outline-none focus:ring-2 focus:ring-(--brand-primary)/50 focus:border-(--brand-primary) transition",
-                  errors.imageUrl ? "border-(--error)" : "border-(--border-default)"
-                )}
-                placeholder="URL รูปภาพ หรืออัปโหลดด้านล่าง"
-                {...register("imageUrl")}
-              />
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="rounded-lg border border-(--border-default) px-4 py-2.5 text-sm text-(--text-secondary) hover:bg-(--surface-tertiary) disabled:opacity-50 transition"
-              >
-                {uploading ? "กำลังอัปโหลด..." : "อัปโหลด"}
-              </button>
-            </div>
-            {errors.imageUrl && (
-              <p className="text-(--error) text-xs mt-1">
-                {errors.imageUrl.message}
-              </p>
-            )}
-            {imageUrl && (
-              <div className="mt-2 relative w-20 h-20 rounded-lg overflow-hidden border border-(--border-default)">
-                <img
-                  src={imageUrl}
-                  alt="Preview"
-                  className="object-cover w-full h-full"
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-teal-50 rounded-xl">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">ระยะเวลา (นาที) *</label>
+                <input
+                  type="number"
+                  value={duration}
+                  onChange={e => setDuration(Number(e.target.value))}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">ราคา (บาท) *</label>
+                <input
+                  type="number"
+                  value={price}
+                  onChange={e => setPrice(Number(e.target.value))}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">ค่ามัดจำ (บาท)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={String(deposit)}
+                  onChange={e => setDeposit(Number(e.target.value))}
+                  placeholder="0 = ไม่มีค่ามัดจำ"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
+                />
+                <p className="mt-1 text-xs text-slate-600">
+                  ถ้าใส่ 0 หรือเว้นว่าง ลูกค้าจองได้เลยไม่ต้องจ่ายมัดจำ
+                </p>
+              </div>
+            </div>
+            {Number(deposit) > 0 && (
+              <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
+                ลูกค้าต้องจ่ายค่ามัดจำ ฿{Number(deposit).toLocaleString()} ก่อนจองบริการนี้
               </div>
             )}
           </div>
-          <div className="flex gap-3 pt-4">
+          <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 rounded-b-2xl">
             <button
-              type="button"
               onClick={onClose}
-              className="flex-1 rounded-lg border border-(--border-default) py-2.5 text-(--text-secondary) hover:bg-(--surface-tertiary) transition"
+              className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-100 transition-colors"
             >
               ยกเลิก
             </button>
             <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 rounded-lg bg-(--brand-primary) py-2.5 text-white font-medium hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 transition"
+              onClick={handleSubmit}
+              disabled={loading}
+              className="px-5 py-2.5 rounded-xl bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 transition-colors disabled:opacity-50"
             >
-              {isSubmitting && (
-                <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-              )}
-              {isSubmitting ? "กำลังบันทึก..." : isEdit ? "บันทึก" : "เพิ่ม"}
+              {loading ? 'กำลังบันทึก...' : isEdit ? 'บันทึก' : 'เพิ่ม'}
             </button>
           </div>
-        </form>
+        </div>
       </div>
-    </div>
-  );
+    </>,
+    document.body
+  )
 }
+

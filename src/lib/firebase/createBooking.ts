@@ -47,11 +47,32 @@ export interface CreateBookingData {
   price?: number;
 }
 
+async function getServiceDoc(tenantId: string, serviceId: string) {
+  const subSnap = await adminDb.collection("tenants").doc(tenantId).collection("services").doc(serviceId).get();
+  if (subSnap.exists) return subSnap;
+  return adminDb.collection(SERVICES).doc(serviceId).get();
+}
+
+async function getStaffWithService(tenantId: string, serviceId: string) {
+  const subSnap = await adminDb
+    .collection("tenants")
+    .doc(tenantId)
+    .collection("staff")
+    .where("serviceIds", "array-contains", serviceId)
+    .get();
+  if (!subSnap.empty) return subSnap;
+  return adminDb
+    .collection(STAFF)
+    .where("tenantId", "==", tenantId)
+    .where("serviceIds", "array-contains", serviceId)
+    .get();
+}
+
 export async function createBooking(
   tenantId: string,
   data: CreateBookingData
 ): Promise<Booking> {
-  const serviceSnap = await adminDb.collection(SERVICES).doc(data.serviceId).get();
+  const serviceSnap = await getServiceDoc(tenantId, data.serviceId);
   if (!serviceSnap.exists) {
     throw new Error("ไม่พบบริการ");
   }
@@ -65,20 +86,17 @@ export async function createBooking(
   let staffName = data.staffName;
 
   if (staffId === "any") {
-    const staffSnap = await adminDb
-      .collection(STAFF)
-      .where("tenantId", "==", tenantId)
-      .where("serviceIds", "array-contains", data.serviceId)
-      .get();
+    const staffSnap = await getStaffWithService(tenantId, data.serviceId);
     const candidates = staffSnap.docs
       .filter((d) => (d.data().isActive as boolean) !== false)
-      .map((d) => ({ id: d.id, name: (d.data().name as string) ?? "" }));
+      .map((d) => ({ id: d.id, name: (d.data().name as string) ?? "" } as { id: string; name: string }));
 
     let found = false;
     for (const s of candidates) {
       const existingSnap = await adminDb
+        .collection("tenants")
+        .doc(tenantId)
         .collection(BOOKINGS)
-        .where("tenantId", "==", tenantId)
         .where("staffId", "==", s.id)
         .where("date", "==", data.date)
         .where("status", "in", ["open", "confirmed"])
@@ -100,8 +118,9 @@ export async function createBooking(
   }
 
   const existingSnap = await adminDb
+    .collection("tenants")
+    .doc(tenantId)
     .collection(BOOKINGS)
-    .where("tenantId", "==", tenantId)
     .where("staffId", "==", staffId)
     .where("date", "==", data.date)
     .where("status", "in", ["open", "confirmed"])
@@ -115,7 +134,11 @@ export async function createBooking(
     throw new Error("เวลานี้ถูกจองแล้ว กรุณาเลือกเวลาใหม่");
   }
 
-  const bookingRef = adminDb.collection(BOOKINGS).doc();
+  const bookingRef = adminDb
+    .collection("tenants")
+    .doc(tenantId)
+    .collection(BOOKINGS)
+    .doc();
   const now = FieldValue.serverTimestamp();
   const booking: Omit<Booking, "id"> & { id: string } = {
     id: bookingRef.id,
@@ -134,6 +157,13 @@ export async function createBooking(
     status: "open",
     notes: data.notes ?? "",
     price,
+    depositAmount: 0,
+    depositStatus: "none",
+    depositPaidAt: null,
+    depositChargeId: "",
+    remainingAmount: price ?? 0,
+    remainingPaidAt: null,
+    remainingStatus: "pending",
     createdAt: now as Booking["createdAt"],
     updatedAt: now as Booking["updatedAt"],
   };
@@ -148,7 +178,11 @@ export async function cancelBooking(
   bookingId: string,
   lineUserId: string
 ): Promise<Booking> {
-  const bookingRef = adminDb.collection(BOOKINGS).doc(bookingId);
+  const bookingRef = adminDb
+    .collection("tenants")
+    .doc(tenantId)
+    .collection(BOOKINGS)
+    .doc(bookingId);
   const snap = await bookingRef.get();
   if (!snap.exists) {
     throw new Error("ไม่พบการจอง");

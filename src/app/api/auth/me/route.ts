@@ -26,8 +26,18 @@ export async function GET(request: NextRequest) {
         { status: 200 }
       );
     }
-    const tenantId = snapshot.docs[0].id;
-    return NextResponse.json({ tenantId, email });
+    const doc = snapshot.docs[0];
+    const tenantId = doc.id;
+    const data = doc.data();
+    const licenseExpiry = data?.licenseExpiry as { toDate?: () => Date } | null | undefined;
+    return NextResponse.json({
+      tenantId,
+      email,
+      tenantName: (data?.name as string) ?? "",
+      businessType: (data?.businessType as string) ?? "",
+      plan: (data?.plan as string) ?? "trial",
+      licenseExpiry: licenseExpiry?.toDate ? licenseExpiry.toDate().toISOString() : null,
+    });
   } catch {
     return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }

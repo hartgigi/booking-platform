@@ -24,7 +24,12 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const { bookingId } = await params;
-    const bookingSnap = await adminDb.collection("bookings").doc(bookingId).get();
+    const bookingSnap = await adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("bookings")
+      .doc(bookingId)
+      .get();
     if (!bookingSnap.exists) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }

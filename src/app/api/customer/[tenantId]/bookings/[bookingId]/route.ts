@@ -12,7 +12,12 @@ export async function GET(
     if (!lineUserId) {
       return NextResponse.json({ error: "ต้องระบุ lineUserId" }, { status: 400 });
     }
-    const doc = await adminDb.collection("bookings").doc(bookingId).get();
+    const doc = await adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("bookings")
+      .doc(bookingId)
+      .get();
     if (!doc.exists) {
       return NextResponse.json({ error: "ไม่พบการจอง" }, { status: 404 });
     }
@@ -37,6 +42,13 @@ export async function GET(
       status: data.status as Booking["status"],
       notes: (data.notes as string) ?? "",
       price: data.price as number | undefined,
+      depositAmount: (data.depositAmount as number) ?? 0,
+      depositStatus: (data.depositStatus as Booking["depositStatus"]) ?? "none",
+      depositPaidAt: (data.depositPaidAt as Booking["depositPaidAt"]) ?? null,
+      depositChargeId: (data.depositChargeId as string) ?? "",
+      remainingAmount: (data.remainingAmount as number) ?? 0,
+      remainingPaidAt: (data.remainingPaidAt as Booking["remainingPaidAt"]) ?? null,
+      remainingStatus: (data.remainingStatus as Booking["remainingStatus"]) ?? "pending",
       createdAt: data.createdAt as Booking["createdAt"],
       updatedAt: data.updatedAt as Booking["updatedAt"],
     };

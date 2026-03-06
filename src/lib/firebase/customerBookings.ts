@@ -32,6 +32,13 @@ function toBooking(id: string, data: Record<string, unknown>): Booking {
     status: data.status as BookingStatus,
     notes: (data.notes as string) ?? "",
     price: data.price as number | undefined,
+    depositAmount: (data.depositAmount as number) ?? 0,
+    depositStatus: (data.depositStatus as Booking["depositStatus"]) ?? "none",
+    depositPaidAt: (data.depositPaidAt as Timestamp) ?? null,
+    depositChargeId: (data.depositChargeId as string) ?? "",
+    remainingAmount: (data.remainingAmount as number) ?? 0,
+    remainingStatus: (data.remainingStatus as Booking["remainingStatus"]) ?? "pending",
+    remainingPaidAt: (data.remainingPaidAt as Timestamp) ?? null,
     createdAt: data.createdAt as Timestamp,
     updatedAt: data.updatedAt as Timestamp,
   };
@@ -46,8 +53,7 @@ export async function getCustomerBookings(
   lineUserId: string
 ): Promise<Booking[]> {
   const q = query(
-    collection(db, COLLECTION),
-    where("tenantId", "==", tenantId),
+    collection(db, "tenants", tenantId, COLLECTION),
     where("customerLineId", "==", lineUserId),
     orderBy("createdAt", "desc")
   );
@@ -61,8 +67,7 @@ export async function getUpcomingBookings(
 ): Promise<Booking[]> {
   const today = getTodayStr();
   const q = query(
-    collection(db, COLLECTION),
-    where("tenantId", "==", tenantId),
+    collection(db, "tenants", tenantId, COLLECTION),
     where("customerLineId", "==", lineUserId),
     where("status", "in", ["open", "confirmed"]),
     where("date", ">=", today),
@@ -79,8 +84,7 @@ export async function getPastBookings(
 ): Promise<Booking[]> {
   const today = getTodayStr();
   const q = query(
-    collection(db, COLLECTION),
-    where("tenantId", "==", tenantId),
+    collection(db, "tenants", tenantId, COLLECTION),
     where("customerLineId", "==", lineUserId),
     orderBy("date", "desc"),
     limit(50)
@@ -101,8 +105,7 @@ export function subscribeUpcomingBookings(
 ): Unsubscribe {
   const today = getTodayStr();
   const q = query(
-    collection(db, COLLECTION),
-    where("tenantId", "==", tenantId),
+    collection(db, "tenants", tenantId, COLLECTION),
     where("customerLineId", "==", lineUserId),
     where("status", "in", ["open", "confirmed"]),
     where("date", ">=", today),
@@ -126,8 +129,7 @@ export function subscribePastBookings(
   onError?: (err: Error) => void
 ): Unsubscribe {
   const q = query(
-    collection(db, COLLECTION),
-    where("tenantId", "==", tenantId),
+    collection(db, "tenants", tenantId, COLLECTION),
     where("customerLineId", "==", lineUserId),
     orderBy("date", "desc"),
     limit(50)

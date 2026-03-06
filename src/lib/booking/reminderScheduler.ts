@@ -10,7 +10,12 @@ export async function scheduleReminder(
   tenantId: string,
   bookingId: string
 ): Promise<void> {
-  const bookingSnap = await adminDb.collection(BOOKINGS).doc(bookingId).get();
+  const bookingSnap = await adminDb
+    .collection("tenants")
+    .doc(tenantId)
+    .collection(BOOKINGS)
+    .doc(bookingId)
+    .get();
   if (!bookingSnap.exists) return;
   const b = bookingSnap.data();
   const date = b?.date as string;

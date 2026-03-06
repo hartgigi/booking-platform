@@ -59,6 +59,7 @@ const adminDb = getFirestore(app);
 const TENANT_ID = "Nu89K2Wc3mO5r7bLEbOl";
 
 async function main() {
+  console.log("Correct tenantId:", TENANT_ID);
   await adminDb.collection("tenants").doc(TENANT_ID).update({
     adminEmail: "admin@jongme.com",
   });

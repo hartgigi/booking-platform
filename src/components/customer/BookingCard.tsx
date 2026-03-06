@@ -18,6 +18,7 @@ const STATUS_CONFIG: Record<
     label: "ยกเลิกโดยร้าน",
     className: "bg-red-500/20 text-red-400",
   },
+  completed: { label: "เสร็จสิ้น", className: "bg-slate-500/20 text-slate-400" },
 };
 
 export function getStatusConfig(status: BookingStatus): {

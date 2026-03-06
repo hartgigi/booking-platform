@@ -21,6 +21,7 @@ function toService(id: string, data: Record<string, unknown>): Service {
     description: (data.description as string) ?? "",
     durationMinutes: data.durationMinutes as number,
     price: data.price as number,
+    depositAmount: (data.depositAmount as number) ?? 0,
     imageUrl: (data.imageUrl as string) ?? "",
     isActive: (data.isActive as boolean) ?? true,
     createdAt: data.createdAt as Timestamp,

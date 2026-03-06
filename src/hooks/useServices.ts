@@ -22,6 +22,7 @@ function toService(id: string, data: Record<string, unknown>): Service {
     description: (data.description as string) ?? "",
     durationMinutes: data.durationMinutes as number,
     price: data.price as number,
+    depositAmount: Number(data.depositAmount as number | string | undefined) || 0,
     imageUrl: (data.imageUrl as string) ?? "",
     isActive: (data.isActive as boolean) ?? true,
     createdAt: data.createdAt as Timestamp,
@@ -52,7 +53,10 @@ export function useServices(tenantId: string | null) {
     const unsub: Unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const list = snapshot.docs.map((d) => toService(d.id, d.data()));
+        snapshot.docs.forEach((d) => {
+          console.log("Raw service data:", d.id, d.data());
+        });
+        const list = snapshot.docs.map((d) => toService(d.id, d.data() as Record<string, unknown>));
         setServices(list);
         setLoading(false);
       },

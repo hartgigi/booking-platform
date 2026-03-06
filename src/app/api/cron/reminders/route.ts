@@ -32,6 +32,13 @@ function toBooking(id: string, data: Record<string, unknown>): Booking {
     status: data.status as Booking["status"],
     notes: (data.notes as string) ?? "",
     price: data.price as number | undefined,
+    depositAmount: (data.depositAmount as number) ?? 0,
+    depositStatus: (data.depositStatus as Booking["depositStatus"]) ?? "none",
+    depositPaidAt: (data.depositPaidAt as Booking["depositPaidAt"]) ?? null,
+    depositChargeId: (data.depositChargeId as string) ?? "",
+    remainingAmount: (data.remainingAmount as number) ?? 0,
+    remainingPaidAt: (data.remainingPaidAt as Booking["remainingPaidAt"]) ?? null,
+    remainingStatus: (data.remainingStatus as Booking["remainingStatus"]) ?? "pending",
     createdAt: data.createdAt as Booking["createdAt"],
     updatedAt: data.updatedAt as Booking["updatedAt"],
   };
@@ -53,7 +60,12 @@ export async function GET(request: NextRequest) {
   for (const doc of snap.docs) {
     const { tenantId, bookingId } = doc.data();
     try {
-      const bookingSnap = await adminDb.collection(BOOKINGS).doc(bookingId).get();
+      const bookingSnap = await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection(BOOKINGS)
+        .doc(bookingId)
+        .get();
       if (!bookingSnap.exists) {
         await doc.ref.update({
           status: "cancelled",

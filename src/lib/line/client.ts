@@ -22,8 +22,9 @@ export async function getLineClient(tenantId: string): Promise<Client> {
     throw new Error(`Tenant ${tenantId} not found`);
   }
   const tenant = { id: tenantDoc.id, ...tenantDoc.data() } as Tenant;
+  const token = tenant.lineChannelAccessToken ?? "";
   const client = new Client({
-    channelAccessToken: tenant.lineChannelAccessToken,
+    channelAccessToken: token,
   });
   clientCache.set(tenantId, client);
   return client;
@@ -45,11 +46,16 @@ export async function sendFlexMessage(
   flexContent: FlexContainer
 ): Promise<void> {
   const client = await getLineClient(tenantId);
-  await client.pushMessage(lineUserId, {
-    type: "flex",
-    altText,
-    contents: flexContent,
-  });
+  try {
+    await client.pushMessage(lineUserId, {
+      type: "flex",
+      altText,
+      contents: flexContent,
+    });
+  } catch (e) {
+    console.error("sendFlexMessage error:", e);
+    throw e;
+  }
 }
 
 export async function sendConfirmTemplate(
@@ -72,7 +78,12 @@ export async function replyText(
   message: string
 ): Promise<void> {
   const client = await getLineClient(tenantId);
-  await client.replyMessage(replyToken, { type: "text", text: message });
+  try {
+    await client.replyMessage(replyToken, { type: "text", text: message });
+  } catch (e) {
+    console.error("replyText error:", e);
+    throw e;
+  }
 }
 
 export async function replyFlex(
@@ -82,11 +93,16 @@ export async function replyFlex(
   flexContent: FlexContainer
 ): Promise<void> {
   const client = await getLineClient(tenantId);
-  await client.replyMessage(replyToken, {
-    type: "flex",
-    altText,
-    contents: flexContent,
-  });
+  try {
+    await client.replyMessage(replyToken, {
+      type: "flex",
+      altText,
+      contents: flexContent,
+    });
+  } catch (e) {
+    console.error("replyFlex error:", e);
+    throw e;
+  }
 }
 
 export async function replyConfirmTemplate(

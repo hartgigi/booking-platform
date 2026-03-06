@@ -1,0 +1,387 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useToastStore } from "@/stores/toastStore";
+import type { TenantSettings } from "./SettingsGuard";
+import FloatingInput from "@/components/ui/FloatingInput";
+import { FloatingTextarea } from "@/components/ui/FloatingInput";
+import { cn } from "@/lib/utils/cn";
+
+const DAY_OPTIONS: { value: number; label: string }[] = [
+  { value: 1, label: "จันทร์" },
+  { value: 2, label: "อังคาร" },
+  { value: 3, label: "พุธ" },
+  { value: 4, label: "พฤหัส" },
+  { value: 5, label: "ศุกร์" },
+  { value: 6, label: "เสาร์" },
+  { value: 0, label: "อาทิตย์" },
+];
+
+interface SettingsClientProps {
+  tenant: TenantSettings;
+}
+
+const FIREBASE_TOKEN_KEY = "firebaseToken";
+
+export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
+  const [name, setName] = useState(initialTenant.name);
+  const [phone, setPhone] = useState(initialTenant.phone);
+  const [address, setAddress] = useState(initialTenant.address);
+  const [openTime, setOpenTime] = useState(initialTenant.openTime);
+  const [closeTime, setCloseTime] = useState(initialTenant.closeTime);
+  const [openDays, setOpenDays] = useState<number[]>(
+    Array.isArray(initialTenant.openDays) ? initialTenant.openDays : [1, 2, 3, 4, 5, 6]
+  );
+  const [slotDurationMinutes, setSlotDurationMinutes] = useState(
+    initialTenant.slotDurationMinutes
+  );
+  const [depositMode, setDepositMode] = useState<"auto" | "manual">(
+    initialTenant.depositMode ?? "manual"
+  );
+  const [bankName, setBankName] = useState(initialTenant.bankName ?? "");
+  const [bankAccountNumber, setBankAccountNumber] = useState(
+    initialTenant.bankAccountNumber ?? ""
+  );
+  const [bankAccountName, setBankAccountName] = useState(
+    initialTenant.bankAccountName ?? ""
+  );
+  const [promptPayNumber, setPromptPayNumber] = useState(
+    initialTenant.promptPayNumber ?? ""
+  );
+  const [creatingMenu, setCreatingMenu] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const success = useToastStore((s) => s.success);
+  const errorToast = useToastStore((s) => s.error);
+
+  useEffect(() => {
+    setName(initialTenant.name);
+    setPhone(initialTenant.phone);
+    setAddress(initialTenant.address);
+    setOpenTime(initialTenant.openTime ?? "09:00");
+    setCloseTime(initialTenant.closeTime ?? "18:00");
+    setOpenDays(Array.isArray(initialTenant.openDays) ? initialTenant.openDays : [1, 2, 3, 4, 5, 6]);
+    setSlotDurationMinutes(
+      typeof initialTenant.slotDurationMinutes === "number" ? initialTenant.slotDurationMinutes : 60
+    );
+    setDepositMode(initialTenant.depositMode ?? "manual");
+    setBankName(initialTenant.bankName ?? "");
+    setBankAccountNumber(initialTenant.bankAccountNumber ?? "");
+    setBankAccountName(initialTenant.bankAccountName ?? "");
+    setPromptPayNumber(initialTenant.promptPayNumber ?? "");
+  }, [
+    initialTenant.id,
+    initialTenant.name,
+    initialTenant.phone,
+    initialTenant.address,
+    initialTenant.openTime,
+    initialTenant.closeTime,
+    initialTenant.openDays,
+    initialTenant.slotDurationMinutes,
+    initialTenant.depositMode,
+    initialTenant.bankName,
+    initialTenant.bankAccountNumber,
+    initialTenant.bankAccountName,
+    initialTenant.promptPayNumber,
+  ]);
+
+  function toggleDay(d: number) {
+    setOpenDays((prev) =>
+      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort((a, b) => a - b)
+    );
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const token =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(FIREBASE_TOKEN_KEY)
+        : null;
+    if (!token) return;
+    setSaving(true);
+    try {
+      console.log("Saving bank settings:", {
+        bankName,
+        bankAccountNumber,
+        bankAccountName,
+        promptPayNumber,
+        depositMode,
+      });
+      const res = await fetch("/api/admin/tenant", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name,
+          phone,
+          address,
+          openTime,
+          closeTime,
+          openDays,
+          slotDurationMinutes: Number(slotDurationMinutes) || 60,
+          depositMode,
+          bankName,
+          bankAccountNumber,
+          bankAccountName,
+          promptPayNumber,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "บันทึกไม่สำเร็จ");
+      }
+      success("บันทึกข้อมูลสำเร็จ");
+    } catch (err) {
+      errorToast(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="pb-24">
+      <div className="p-6 max-w-2xl mx-auto animate-fade-in">
+        <h1 className="text-2xl font-semibold text-slate-900 mb-6">ตั้งค่าร้าน</h1>
+
+        <div className="space-y-0">
+        <section className="border-b border-slate-200 pb-6 mb-6">
+          <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-4">ข้อมูลร้าน</h2>
+          <div className="space-y-4">
+            <FloatingInput
+              label="ชื่อร้าน"
+              type="text"
+              value={name}
+              onChange={setName}
+            />
+            <FloatingInput
+              label="เบอร์โทรศัพท์"
+              type="tel"
+              value={phone}
+              onChange={setPhone}
+            />
+            <FloatingTextarea
+              label="ที่อยู่"
+              value={address}
+              onChange={setAddress}
+              rows={3}
+            />
+          </div>
+        </section>
+
+        <section className="border-b border-slate-200 pb-6 mb-6">
+          <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-4">เวลาทำการ</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <FloatingInput
+              label="เวลาเปิด"
+              type="time"
+              value={openTime}
+              onChange={setOpenTime}
+            />
+            <FloatingInput
+              label="เวลาปิด"
+              type="time"
+              value={closeTime}
+              onChange={setCloseTime}
+            />
+          </div>
+          <p className="text-sm text-slate-500 mb-2">วันที่เปิดให้บริการ</p>
+          <div className="flex flex-wrap gap-2">
+            {DAY_OPTIONS.map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => toggleDay(value)}
+                className={cn(
+                  "rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                  openDays.includes(value)
+                    ? "bg-teal-600 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="border-b border-slate-200 pb-6 mb-6">
+          <div className="max-w-[200px]">
+            <FloatingInput
+              label="ระยะเวลาต่อ slot (นาที)"
+              type="number"
+              value={String(slotDurationMinutes)}
+              onChange={(v) => setSlotDurationMinutes(Number(v) || 60)}
+            />
+          </div>
+        </section>
+
+        <section className="border-b border-slate-200 pb-6 mb-6 space-y-4">
+          <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider">
+            การรับเงินมัดจำ
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={() => setDepositMode("manual")}
+              className={cn(
+                "flex flex-col items-start gap-2 rounded-2xl border px-4 py-4 text-left transition-all",
+                depositMode === "manual"
+                  ? "border-teal-500 bg-teal-50 shadow-sm"
+                  : "border-slate-200 hover:bg-slate-50"
+              )}
+            >
+              <div className="flex items-center justify-between w-full">
+                <div className="text-sm font-semibold text-slate-900">
+                  ตรวจสอบเอง
+                </div>
+                <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                  ฟรี ไม่มีค่าธรรมเนียม
+                </span>
+              </div>
+              <p className="text-xs text-slate-600">
+                ลูกค้าจ่ายแล้วส่งสลิป คุณตรวจสอบและกดยืนยันเอง
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDepositMode("auto")}
+              className={cn(
+                "flex flex-col items-start gap-2 rounded-2xl border px-4 py-4 text-left transition-all",
+                depositMode === "auto"
+                  ? "border-teal-500 bg-teal-50 shadow-sm"
+                  : "border-slate-200 hover:bg-slate-50"
+              )}
+            >
+              <div className="flex items-center justify-between w-full">
+                <div className="text-sm font-semibold text-slate-900">
+                  ตรวจสอบอัตโนมัติ
+                </div>
+                <span className="inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                  ค่าธรรมเนียม 4.65%
+                </span>
+              </div>
+              <p className="text-xs text-slate-600">
+                ระบบตรวจสอบการชำระเงินให้อัตโนมัติ ไม่ต้องทำอะไร
+              </p>
+              <p className="text-[11px] text-slate-500">
+                ค่าธรรมเนียมจะบวกเพิ่มให้ลูกค้าจ่าย ร้านได้รับเงินเต็มจำนวน
+              </p>
+            </button>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            <h3 className="text-sm font-medium text-slate-900">บัญชีรับเงิน</h3>
+            <p className="text-xs text-slate-500">
+              ข้อมูลนี้จะแสดงให้ลูกค้าเห็นตอนจ่ายมัดจำ (สำหรับโหมดตรวจสอบเอง)
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  ชื่อธนาคาร
+                </label>
+                <select
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                >
+                  <option value="">เลือกธนาคาร</option>
+                  <option value="กสิกรไทย">กสิกรไทย</option>
+                  <option value="กรุงเทพ">กรุงเทพ</option>
+                  <option value="ไทยพาณิชย์">ไทยพาณิชย์</option>
+                  <option value="กรุงไทย">กรุงไทย</option>
+                  <option value="ทหารไทยธนชาต">ทหารไทยธนชาต</option>
+                  <option value="กรุงศรีอยุธยา">กรุงศรีอยุธยา</option>
+                  <option value="ออมสิน">ออมสิน</option>
+                </select>
+              </div>
+              <FloatingInput
+                label="เลขบัญชี"
+                type="text"
+                value={bankAccountNumber}
+                onChange={setBankAccountNumber}
+              />
+              <FloatingInput
+                label="ชื่อบัญชี"
+                type="text"
+                value={bankAccountName}
+                onChange={setBankAccountName}
+              />
+              <div>
+                <FloatingInput
+                  label="เบอร์ PromptPay"
+                  type="text"
+                  value={promptPayNumber}
+                  onChange={setPromptPayNumber}
+                />
+                <p className="mt-1 text-[11px] text-slate-500">
+                  เบอร์โทรศัพท์หรือเลขบัตรประชาชน
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-b border-slate-200 pb-6 mb-6 space-y-3">
+          <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider">
+            LINE OA
+          </h2>
+          <p className="text-xs text-slate-500">
+            สร้าง Rich Menu สำหรับให้ลูกค้าจองคิวผ่าน LINE ได้ง่ายขึ้น
+          </p>
+          <button
+            type="button"
+            onClick={async () => {
+              setCreatingMenu(true);
+              try {
+                const res = await fetch("/api/admin/rich-menu", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ tenantId: initialTenant.id }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                  alert("สร้าง Rich Menu สำเร็จ!");
+                } else {
+                  alert(
+                    "ไม่สามารถสร้าง Rich Menu: " +
+                      (data.error || "")
+                  );
+                }
+              } catch {
+                alert("เกิดข้อผิดพลาด");
+              }
+              setCreatingMenu(false);
+            }}
+            disabled={creatingMenu}
+            className="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 disabled:opacity-50"
+          >
+            {creatingMenu
+              ? "กำลังสร้าง..."
+              : "📱 สร้าง Rich Menu สำหรับ LINE"}
+          </button>
+        </section>
+
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 mb-6">
+          <p className="text-sm text-slate-600">
+            วิธีรับแจ้งเตือนการจอง: แอดเพื่อนกับ Line OA ของร้านคุณ แล้วพิมพ์ว่า &quot;admin&quot; ระบบจะบันทึกไว้อัตโนมัติ
+          </p>
+        </div>
+        </div>
+      </div>
+
+      <div className="fixed bottom-0 left-0 right-0 lg:left-[260px] border-t border-slate-200 bg-white p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <div className="max-w-2xl mx-auto">
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => handleSubmit({ preventDefault: () => {} } as React.FormEvent)}
+            className="w-full rounded-lg bg-teal-600 px-6 py-3 text-sm font-medium text-white hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? "กำลังบันทึก..." : "บันทึก"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

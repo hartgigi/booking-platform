@@ -14,11 +14,12 @@ const TRANSITIONS: Record<BookingStatus, Record<"admin" | "customer", BookingSta
     customer: ["user_cancelled"],
   },
   confirmed: {
-    admin: ["admin_cancelled"],
+    admin: ["admin_cancelled", "completed"],
     customer: ["user_cancelled"],
   },
   user_cancelled: { admin: [], customer: [] },
   admin_cancelled: { admin: [], customer: [] },
+  completed: { admin: [], customer: [] },
 };
 
 export function isValidTransition(

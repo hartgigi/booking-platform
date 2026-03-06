@@ -62,6 +62,7 @@ export async function getAvailableSlots(
   const slots: TimeSlot[] = [];
   const blockedRanges: { start: number; end: number }[] = [];
 
+  const now = new Date();
   const bookingDocs = bookingsSnap.docs;
   for (const d of bookingDocs) {
     const b = d.data();
@@ -70,6 +71,10 @@ export async function getAvailableSlots(
       ? ((serviceRef.data()?.durationMinutes as number) ?? 60)
       : 60;
     const bStart = timeToMinutes(b.startTime as string);
+    const bEndMin = bStart + dur;
+    const endTimeStr = minutesToTime(bEndMin);
+    const bookingEnd = new Date(`${date}T${endTimeStr}:00`);
+    if (bookingEnd <= now) continue;
     blockedRanges.push({ start: bStart, end: bStart + dur });
   }
 

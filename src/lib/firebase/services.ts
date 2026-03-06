@@ -26,6 +26,7 @@ function toService(id: string, data: DocumentData): Service {
     description: data.description ?? "",
     durationMinutes: data.durationMinutes,
     price: data.price,
+    depositAmount: Number(data.depositAmount) || 0,
     imageUrl: data.imageUrl ?? "",
     isActive: data.isActive ?? true,
     createdAt: data.createdAt as Timestamp,
@@ -64,17 +65,20 @@ export async function createService(
   tenantId: string,
   data: CreateServiceData
 ): Promise<string> {
-  const ref = await addDoc(collection(db, COLLECTION), {
+  const payload = {
     tenantId,
     name: data.name,
     description: data.description ?? "",
     durationMinutes: data.durationMinutes,
     price: data.price,
+    depositAmount: data.depositAmount ?? 0,
     imageUrl: data.imageUrl ?? "",
     isActive: data.isActive ?? true,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  };
+  console.log("createService payload", payload);
+  const ref = await addDoc(collection(db, COLLECTION), payload);
   return ref.id;
 }
 
@@ -92,10 +96,12 @@ export async function updateService(
   if (!snapshot.exists() || snapshot.data().tenantId !== tenantId) {
     throw new Error("Service not found");
   }
-  await updateDoc(ref, {
+  const payload = {
     ...data,
     updatedAt: serverTimestamp(),
-  });
+  };
+  console.log("updateService payload", serviceId, payload);
+  await updateDoc(ref, payload);
 }
 
 export async function deleteService(
