@@ -1,5 +1,4 @@
 import { adminDb } from "@/lib/firebase/admin";
-const sharp = require("sharp");
 
 const RICH_MENU_TEMPLATE = {
   size: { width: 2500, height: 843 },
@@ -77,22 +76,9 @@ export async function createRichMenuForTenant(
       return null;
     }
 
-    const svgContent = `<svg width="2500" height="843" xmlns="http://www.w3.org/2000/svg">
-  <rect width="2500" height="843" fill="#0D9488"/>
-  <line x1="833" y1="60" x2="833" y2="783" stroke="rgba(255,255,255,0.4)" stroke-width="3"/>
-  <line x1="1667" y1="60" x2="1667" y2="783" stroke="rgba(255,255,255,0.4)" stroke-width="3"/>
-  <circle cx="416" cy="320" r="120" fill="rgba(255,255,255,0.2)"/>
-  <text x="416" y="295" font-family="Arial" font-size="130" text-anchor="middle" fill="white">📅</text>
-  <text x="416" y="560" font-family="Arial, Helvetica" font-size="90" font-weight="bold" text-anchor="middle" fill="white">&#3592;&#3629;&#3591;&#3588;&#3636;&#3623;</text>
-  <circle cx="1250" cy="320" r="120" fill="rgba(255,255,255,0.2)"/>
-  <text x="1250" y="295" font-family="Arial" font-size="130" text-anchor="middle" fill="white">📋</text>
-  <text x="1250" y="530" font-family="Arial, Helvetica" font-size="75" font-weight="bold" text-anchor="middle" fill="white">&#3648;&#3594;&#3655;&#3588;&#3585;&#3634;&#3619;&#3592;&#3629;&#3591;</text>
-  <circle cx="2083" cy="320" r="120" fill="rgba(255,255,255,0.2)"/>
-  <text x="2083" y="295" font-family="Arial" font-size="130" text-anchor="middle" fill="white">📞</text>
-  <text x="2083" y="560" font-family="Arial, Helvetica" font-size="80" font-weight="bold" text-anchor="middle" fill="white">&#3605;&#3636;&#3604;&#3605;&#3656;&#3629;&#3648;&#3619;&#3634;</text>
-</svg>`;
-
-    const imageBuffer = await sharp(Buffer.from(svgContent)).png().toBuffer();
+    const fs = require("fs");
+    const path = require("path");
+    const imageBuffer = fs.readFileSync(path.join(process.cwd(), "public", "rich_menu.png"));
 
     const uploadRes = await fetch(
       "https://api-data.line.me/v2/bot/richmenu/" + richMenuId + "/content",
