@@ -59,7 +59,7 @@ export async function createRichMenuForTenant(
 
     const menuBody = JSON.parse(JSON.stringify(RICH_MENU_TEMPLATE)) as typeof RICH_MENU_TEMPLATE;
     (menuBody.areas[0].action as { uri: string }).uri = liffUrl;
-    (menuBody.areas[2].action as { uri: string }).uri = (process.env.NEXT_PUBLIC_APP_URL || "") + "/contact";
+    (menuBody.areas[2].action as { uri: string }).uri = (process.env.NEXT_PUBLIC_APP_URL || "") + "/contact/" + tenantId;
 
     const createRes = await fetch("https://api.line.me/v2/bot/richmenu", {
       method: "POST",
