@@ -402,6 +402,55 @@ async function handleEvent(event: WebhookEvent, tenant: Tenant) {
   }
 
   if (event.type === "message") {
+    const userId = (event.source as { userId?: string }).userId;
+    if (
+      (event as { message?: { type?: string; text?: string } }).message?.type === "text" &&
+      userId
+    ) {
+      const text = (event as { message: { text: string } }).message.text;
+      if (text.includes("เช็คการจอง") || text.includes("ตรวจสอบการจอง")) {
+        const bookingsSnap = await adminDb
+          .collection("tenants")
+          .doc(tenantId)
+          .collection("bookings")
+          .where("customerLineId", "==", userId)
+          .orderBy("createdAt", "desc")
+          .limit(5)
+          .get();
+        if (bookingsSnap.empty) {
+          await reply((event as { replyToken: string }).replyToken, [
+            {
+              type: "text",
+              text: "ยังไม่มีประวัติการจองค่ะ 📋\nกดปุ่ม \"จองคิว\" ด้านล่างเพื่อจองได้เลยค่ะ",
+            },
+          ]);
+          return;
+        }
+        const statusMap: Record<string, string> = {
+          confirmed: "✅ ยืนยันแล้ว",
+          open: "🟡 รอยืนยัน",
+          completed: "✅ เสร็จสิ้น",
+          cancelled: "❌ ยกเลิก",
+          pending_deposit: "💰 รอชำระมัดจำ",
+        };
+        let replyText =
+          "📋 ประวัติการจองของคุณ\n━━━━━━━━━━━━━━\n";
+        bookingsSnap.docs.forEach((doc, i) => {
+          const b = doc.data();
+          const status = statusMap[b.status as string] || (b.status as string);
+          replyText += `\n${i + 1}. ${(b.serviceName as string) || "ไม่ระบุ"}`;
+          replyText += `\n   📅 ${b.date} ⏰ ${b.startTime} น.`;
+          replyText += `\n   👤 ช่าง: ${(b.staffName as string) || "ไม่ระบุ"}`;
+          replyText += `\n   📌 สถานะ: ${status}`;
+          replyText += `\n   💰 ราคา: ฿${(b.remainingAmount as number) ?? 0}`;
+          replyText += "\n━━━━━━━━━━━━━━";
+        });
+        await reply((event as { replyToken: string }).replyToken, [
+          { type: "text", text: replyText },
+        ]);
+        return;
+      }
+    }
     if ((event as { message?: { type?: string } }).message?.type === "image") {
       const lineUserId = (event.source as { userId?: string }).userId;
       if (!lineUserId) return;
@@ -600,6 +649,48 @@ async function handlePostback(
   if (!lineUserId) return;
   const params = parsePostbackParams(data);
   const action = params.action;
+
+  if (action === "check_booking") {
+    const bookingsSnap = await adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("bookings")
+      .where("customerLineId", "==", lineUserId)
+      .orderBy("createdAt", "desc")
+      .limit(5)
+      .get();
+    if (bookingsSnap.empty) {
+      await sendLineReply(event.replyToken, [
+        {
+          type: "text",
+          text: "ยังไม่มีประวัติการจองค่ะ 📋\nกดปุ่ม \"จองคิว\" ด้านล่างเพื่อจองได้เลยค่ะ",
+        },
+      ]);
+      return;
+    }
+    const statusMap: Record<string, string> = {
+      confirmed: "✅ ยืนยันแล้ว",
+      open: "🟡 รอยืนยัน",
+      completed: "✅ เสร็จสิ้น",
+      cancelled: "❌ ยกเลิก",
+      pending_deposit: "💰 รอชำระมัดจำ",
+    };
+    let replyText = "📋 ประวัติการจองของคุณ\n━━━━━━━━━━━━━━\n";
+    bookingsSnap.docs.forEach((doc, i) => {
+      const b = doc.data();
+      const status = statusMap[b.status as string] || (b.status as string);
+      replyText += `\n${i + 1}. ${(b.serviceName as string) || "ไม่ระบุ"}`;
+      replyText += `\n   📅 ${b.date} ⏰ ${b.startTime} น.`;
+      replyText += `\n   👤 ช่าง: ${(b.staffName as string) || "ไม่ระบุ"}`;
+      replyText += `\n   📌 สถานะ: ${status}`;
+      replyText += `\n   💰 ราคา: ฿${(b.remainingAmount as number) ?? 0}`;
+      replyText += "\n━━━━━━━━━━━━━━";
+    });
+    await sendLineReply(event.replyToken, [
+      { type: "text", text: replyText },
+    ]);
+    return;
+  }
 
   if (action === "start_booking") {
     const openDays = tenant.openDays ?? [1, 2, 3, 4, 5, 6];

@@ -59,6 +59,33 @@ export async function POST(request: Request, { params }: { params: { tenantId: s
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       })
 
+      const serviceDoc = await adminDb.collection('services').doc(serviceId).get()
+      const serviceData = serviceDoc.exists ? serviceDoc.data() : null
+      let staffName = 'ไม่ระบุ'
+      if (staffId && staffId !== 'any') {
+        const staffDoc = await adminDb.collection('staff').doc(staffId).get()
+        if (staffDoc.exists) staffName = staffDoc.data()?.name || staffName
+      }
+      const adminLineUserId = tenant?.adminLineUserId
+      if (adminLineUserId && tenant?.lineChannelAccessToken) {
+        const notifyText = `🔔 จองคิวใหม่!\n━━━━━━━━━━━━━━\n👤 ลูกค้า: ${lineDisplayName || ''}\n💇 บริการ: ${serviceData?.name || ''}\n📅 วันที่: ${date}\n⏰ เวลา: ${time} น.\n👤 ช่าง: ${staffName}\n💰 ราคา: ฿${serviceData?.price ?? 0}`
+        try {
+          await fetch('https://api.line.me/v2/bot/message/push', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + tenant.lineChannelAccessToken
+            },
+            body: JSON.stringify({
+              to: adminLineUserId,
+              messages: [{ type: 'text', text: notifyText }]
+            })
+          })
+        } catch (err) {
+          console.error('Failed to notify admin:', err)
+        }
+      }
+
       const rawQrUrl = charge.source?.scannable_code?.image?.download_uri || ''
       let qrCodeUrl = ''
       if (rawQrUrl) {
@@ -103,6 +130,33 @@ export async function POST(request: Request, { params }: { params: { tenantId: s
       mode: 'manual',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     })
+
+    const serviceDoc = await adminDb.collection('services').doc(serviceId).get()
+    const serviceData = serviceDoc.exists ? serviceDoc.data() : null
+    let staffName = 'ไม่ระบุ'
+    if (staffId && staffId !== 'any') {
+      const staffDoc = await adminDb.collection('staff').doc(staffId).get()
+      if (staffDoc.exists) staffName = staffDoc.data()?.name || staffName
+    }
+    const adminLineUserId = tenant?.adminLineUserId
+    if (adminLineUserId && tenant?.lineChannelAccessToken) {
+      const notifyText = `🔔 จองคิวใหม่!\n━━━━━━━━━━━━━━\n👤 ลูกค้า: ${lineDisplayName || ''}\n💇 บริการ: ${serviceData?.name || ''}\n📅 วันที่: ${date}\n⏰ เวลา: ${time} น.\n👤 ช่าง: ${staffName}\n💰 ราคา: ฿${serviceData?.price ?? 0}`
+      try {
+        await fetch('https://api.line.me/v2/bot/message/push', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + tenant.lineChannelAccessToken
+          },
+          body: JSON.stringify({
+            to: adminLineUserId,
+            messages: [{ type: 'text', text: notifyText }]
+          })
+        })
+      } catch (err) {
+        console.error('Failed to notify admin:', err)
+      }
+    }
 
     return NextResponse.json({
       pendingDepositId: pendingRef.id,

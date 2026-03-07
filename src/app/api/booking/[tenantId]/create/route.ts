@@ -53,6 +53,28 @@ export async function POST(request: Request, { params }: { params: { tenantId: s
 
     await bookingRef.set(booking)
 
+    const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get()
+    const tenant = tenantDoc.exists ? tenantDoc.data() : null
+    const adminLineUserId = tenant?.adminLineUserId
+    if (adminLineUserId && tenant?.lineChannelAccessToken) {
+      const notifyText = `🔔 จองคิวใหม่!\n━━━━━━━━━━━━━━\n👤 ลูกค้า: ${lineDisplayName || ''}\n💇 บริการ: ${service?.name || ''}\n📅 วันที่: ${date}\n⏰ เวลา: ${time} น.\n👤 ช่าง: ${staffName || 'ไม่ระบุ'}\n💰 ราคา: ฿${service?.price ?? 0}`
+      try {
+        await fetch('https://api.line.me/v2/bot/message/push', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + tenant.lineChannelAccessToken
+          },
+          body: JSON.stringify({
+            to: adminLineUserId,
+            messages: [{ type: 'text', text: notifyText }]
+          })
+        })
+      } catch (err) {
+        console.error('Failed to notify admin:', err)
+      }
+    }
+
     return NextResponse.json({ bookingId: bookingRef.id, booking })
   } catch (error) {
     console.error('Create booking error:', error)
