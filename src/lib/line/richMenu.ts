@@ -1,21 +1,22 @@
 import { adminDb } from "@/lib/firebase/admin";
+const sharp = require("sharp");
 
 const RICH_MENU_TEMPLATE = {
-  size: { width: 2500, height: 1686 },
+  size: { width: 2500, height: 843 },
   selected: true,
   name: "Main Menu",
   chatBarText: "เมนู",
   areas: [
     {
-      bounds: { x: 0, y: 0, width: 833, height: 1686 },
+      bounds: { x: 0, y: 0, width: 833, height: 843 },
       action: { type: "uri", label: "จองคิว", uri: "" },
     },
     {
-      bounds: { x: 833, y: 0, width: 834, height: 1686 },
+      bounds: { x: 833, y: 0, width: 834, height: 843 },
       action: { type: "postback", label: "เช็คการจอง", data: "action=check_booking", displayText: "เช็คการจอง" },
     },
     {
-      bounds: { x: 1667, y: 0, width: 833, height: 1686 },
+      bounds: { x: 1667, y: 0, width: 833, height: 843 },
       action: { type: "uri", label: "ติดต่อเรา", uri: "" },
     },
   ],
@@ -76,57 +77,22 @@ export async function createRichMenuForTenant(
       return null;
     }
 
-    const { createCanvas } = require("canvas") as typeof import("canvas");
-    const canvas = createCanvas(2500, 1686);
-    const ctx = canvas.getContext("2d");
+    const svgContent = `<svg width="2500" height="843" xmlns="http://www.w3.org/2000/svg">
+  <rect width="2500" height="843" fill="#0D9488"/>
+  <line x1="833" y1="60" x2="833" y2="783" stroke="rgba(255,255,255,0.4)" stroke-width="3"/>
+  <line x1="1667" y1="60" x2="1667" y2="783" stroke="rgba(255,255,255,0.4)" stroke-width="3"/>
+  <circle cx="416" cy="320" r="120" fill="rgba(255,255,255,0.2)"/>
+  <text x="416" y="295" font-family="Arial" font-size="130" text-anchor="middle" fill="white">📅</text>
+  <text x="416" y="560" font-family="Arial, Helvetica" font-size="90" font-weight="bold" text-anchor="middle" fill="white">&#3592;&#3629;&#3591;&#3588;&#3636;&#3623;</text>
+  <circle cx="1250" cy="320" r="120" fill="rgba(255,255,255,0.2)"/>
+  <text x="1250" y="295" font-family="Arial" font-size="130" text-anchor="middle" fill="white">📋</text>
+  <text x="1250" y="530" font-family="Arial, Helvetica" font-size="75" font-weight="bold" text-anchor="middle" fill="white">&#3648;&#3594;&#3655;&#3588;&#3585;&#3634;&#3619;&#3592;&#3629;&#3591;</text>
+  <circle cx="2083" cy="320" r="120" fill="rgba(255,255,255,0.2)"/>
+  <text x="2083" y="295" font-family="Arial" font-size="130" text-anchor="middle" fill="white">📞</text>
+  <text x="2083" y="560" font-family="Arial, Helvetica" font-size="80" font-weight="bold" text-anchor="middle" fill="white">&#3605;&#3636;&#3604;&#3605;&#3656;&#3629;&#3648;&#3619;&#3634;</text>
+</svg>`;
 
-    ctx.fillStyle = "#0D9488";
-    ctx.fillRect(0, 0, 2500, 1686);
-
-    ctx.strokeStyle = "rgba(255,255,255,0.3)";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(833, 200);
-    ctx.lineTo(833, 1486);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(1667, 200);
-    ctx.lineTo(1667, 1486);
-    ctx.stroke();
-
-    const drawCircleIcon = (cx: number, cy: number, iconText: string) => {
-      ctx.fillStyle = "rgba(255,255,255,0.2)";
-      ctx.beginPath();
-      ctx.arc(cx, cy, 120, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#FFFFFF";
-      ctx.font = "bold 120px Arial, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(iconText, cx, cy);
-    };
-
-    const iconCy = 700;
-    const textCy = 880;
-
-    drawCircleIcon(416, iconCy, "+");
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 90px Arial, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("จองคิว", 416, textCy);
-
-    drawCircleIcon(1250, iconCy, "=");
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 80px Arial, sans-serif";
-    ctx.fillText("เช็คการจอง", 1250, textCy);
-
-    drawCircleIcon(2083, iconCy, "?");
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 85px Arial, sans-serif";
-    ctx.fillText("ติดต่อเรา", 2083, textCy);
-
-    const imageBuffer = canvas.toBuffer("image/png");
+    const imageBuffer = await sharp(Buffer.from(svgContent)).png().toBuffer();
 
     const uploadRes = await fetch(
       "https://api-data.line.me/v2/bot/richmenu/" + richMenuId + "/content",
