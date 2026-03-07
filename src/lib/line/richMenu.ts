@@ -12,16 +12,11 @@ const RICH_MENU_TEMPLATE = {
     },
     {
       bounds: { x: 833, y: 0, width: 834, height: 843 },
-      action: { type: "uri", label: "บริการ", uri: "" },
+      action: { type: "postback", label: "เช็คการจอง", data: "action=check_booking", displayText: "เช็คการจอง" },
     },
     {
       bounds: { x: 1667, y: 0, width: 833, height: 843 },
-      action: {
-        type: "postback",
-        label: "เช็คการจอง",
-        data: "action=check_booking",
-        displayText: "ตรวจสอบการจอง",
-      },
+      action: { type: "uri", label: "ติดต่อเรา", uri: "" },
     },
   ],
 };
@@ -40,8 +35,8 @@ export async function createRichMenuForTenant(
     const liffUrl = "https://liff.line.me/" + liffId + "?tenantId=" + tenantId;
 
     const menuBody = JSON.parse(JSON.stringify(RICH_MENU_TEMPLATE)) as typeof RICH_MENU_TEMPLATE;
-    menuBody.areas[0].action.uri = liffUrl;
-    menuBody.areas[1].action.uri = liffUrl;
+    (menuBody.areas[0].action as { uri: string }).uri = liffUrl;
+    (menuBody.areas[2].action as { uri: string }).uri = liffUrl + "&page=contact";
 
     const createRes = await fetch("https://api.line.me/v2/bot/richmenu", {
       method: "POST",
@@ -96,15 +91,15 @@ export async function createRichMenuForTenant(
     ctx.fillStyle = "#FFFFFF";
     ctx.fillText("จองคิว", 416, 481);
 
-    drawIcon(1250, 421, "💇");
+    drawIcon(1250, 421, "📋");
     ctx.font = "bold 50px sans-serif";
     ctx.fillStyle = "#FFFFFF";
-    ctx.fillText("บริการ", 1250, 481);
+    ctx.fillText("เช็คการจอง", 1250, 481);
 
-    drawIcon(2083, 421, "📋");
+    drawIcon(2083, 421, "📞");
     ctx.font = "bold 50px sans-serif";
     ctx.fillStyle = "#FFFFFF";
-    ctx.fillText("เช็คการจอง", 2083, 481);
+    ctx.fillText("ติดต่อเรา", 2083, 481);
 
     const imageBuffer = canvas.toBuffer("image/png");
 

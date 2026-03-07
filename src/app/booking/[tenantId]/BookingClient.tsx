@@ -155,12 +155,14 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
   const [manualDeposit, setManualDeposit] = useState<any>(null)
   const [liffProfile, setLiffProfile] = useState<any>(null)
 
-  const steps = ['เลือกบริการ', 'เลือกช่าง', 'เลือกวัน/เวลา', 'ยืนยัน']
+  const steps = ['เลือกบริการ', 'เลือกช่าง', 'เลือกวัน/เวลา', 'ยืนยันการจอง']
 
   useEffect(() => {
     if (!selectedDate || !selectedService || !tenantId) return
     const staffParam = selectedStaff?.id || 'any'
-    fetch('/api/booking/' + tenantId + '/timeslots?date=' + selectedDate + '&staffId=' + staffParam + '&serviceId=' + selectedService.id)
+    fetch('/api/booking/' + tenantId + '/timeslots?date=' + selectedDate + '&staffId=' + staffParam + '&serviceId=' + selectedService.id, {
+      headers: { 'Content-Type': 'application/json' }
+    })
       .then(r => r.json())
       .then(data => setTimeSlots(data.slots || []))
       .catch(() => setTimeSlots([]))
@@ -391,8 +393,6 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
     (currentStep === 0 && !selectedService) ||
     (currentStep === 2 && (!selectedDate || !selectedTime))
 
-  console.log('Button state:', { currentStep, selectedService: selectedService?.name })
-
   return (
     <div style={styles.page}>
       <header style={styles.header}>
@@ -424,10 +424,7 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
             {services.map(service => (
               <div
                 key={service.id}
-                onClick={() => {
-                  console.log('Selected service:', service.name)
-                  setSelectedService(service)
-                }}
+                onClick={() => setSelectedService(service)}
                 style={styles.serviceCard(selectedService?.id === service.id)}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -467,8 +464,7 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
             >
               <div style={styles.staffAvatar}>🎲</div>
               <div>
-                <h3 style={styles.serviceName}>ไม่ระบุช่าง</h3>
-                <p style={styles.serviceDesc}>ให้ร้านเลือกให้</p>
+                <h3 style={styles.serviceName}>ไม่ระบุช่าง (ให้ร้านเลือกให้)</h3>
               </div>
             </div>
             {filteredStaff.map(staff => (
