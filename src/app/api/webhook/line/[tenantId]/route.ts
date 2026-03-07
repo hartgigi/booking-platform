@@ -304,6 +304,7 @@ async function processEvents(tenantId: string, body: string) {
     if (!tenant) return;
 
     for (const event of parsed.events ?? []) {
+      console.log("[webhook] event type in loop:", event.type);
       if (event.type === "message" && event.message?.type === "text") {
         const text = event.message.text.toLowerCase().trim();
         const lineUserId = event.source?.userId;
@@ -649,13 +650,19 @@ async function handlePostback(
   },
   sendLineReply: (replyToken: string, messages: object[]) => Promise<unknown>
 ) {
+  console.log("[webhook] handlePostback called, data:", event.postback.data);
   const data = event.postback.data;
   const lineUserId = event.source.userId;
-  if (!lineUserId) return;
+  if (!lineUserId) {
+    console.log("[webhook] handlePostback early return: no lineUserId");
+    return;
+  }
   const params = parsePostbackParams(data);
   const action = params.action;
+  console.log("[webhook] parsed action:", action);
 
   if (action === "check_booking") {
+    console.log("[webhook] check_booking block entered");
     const bookingsSnap = await adminDb
       .collection("tenants")
       .doc(tenantId)
