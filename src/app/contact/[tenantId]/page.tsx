@@ -1,8 +1,5 @@
-'use client'
-
 import { Prompt } from 'next/font/google'
-import { useParams } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { adminDb } from '@/lib/firebase/admin'
 
 const prompt = Prompt({
   weight: ['400', '500', '600', '700'],
@@ -12,50 +9,15 @@ const prompt = Prompt({
 
 const DAY_NAMES = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
 
-export default function TenantContactPage() {
-  const params = useParams()
-  const tenantId = params.tenantId as string
-  const [data, setData] = useState<{
-    tenant?: {
-      id: string
-      name?: string
-      phone?: string
-      address?: string
-      lineId?: string
-      openTime?: string
-      closeTime?: string
-      openDays?: number[]
-    }
-  } | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+export default async function TenantContactPage({
+  params,
+}: {
+  params: { tenantId: string }
+}) {
+  const { tenantId } = params
+  const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get()
 
-  useEffect(() => {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '')
-    fetch(baseUrl + '/api/booking/' + tenantId, { cache: 'no-store' })
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then(setData)
-      .catch(() => setError(true))
-      .finally(() => setLoading(false))
-  }, [tenantId])
-
-  const tenant = data?.tenant
-  const hasContact = tenant && (tenant.phone || tenant.address || tenant.lineId)
-  const lineOaUrl = tenant?.lineId
-    ? (tenant.lineId.startsWith('http') ? tenant.lineId : 'https://line.me/R/ti/p/' + (tenant.lineId.startsWith('@') ? tenant.lineId : '@' + tenant.lineId))
-    : ''
-
-  if (loading) {
-    return (
-      <div className={prompt.className} style={{ fontFamily: 'Prompt, sans-serif' }}>
-        <div className="min-h-screen bg-[#0F172A] flex items-center justify-center">
-          <div className="w-10 h-10 rounded-full border-2 border-[#0D9488] border-t-transparent animate-spin" />
-        </div>
-      </div>
-    )
-  }
-
-  if (error || !tenant) {
+  if (!tenantDoc.exists) {
     return (
       <div className={prompt.className} style={{ fontFamily: 'Prompt, sans-serif' }}>
         <div className="min-h-screen bg-[#0F172A] text-white flex flex-col items-center justify-center px-6">
@@ -64,6 +26,25 @@ export default function TenantContactPage() {
       </div>
     )
   }
+
+  const raw = tenantDoc.data()
+  const tenant = {
+    id: tenantId,
+    name: (raw?.name as string) || '',
+    phone: (raw?.phone as string) || '',
+    address: (raw?.address as string) || '',
+    lineId: (raw?.lineId as string) || (raw?.lineOaId as string) || '',
+    openTime: (raw?.openTime as string) || '',
+    closeTime: (raw?.closeTime as string) || '',
+    openDays: (raw?.openDays as number[]) || [],
+  }
+
+  const hasContact = !!(tenant.phone || tenant.address || tenant.lineId)
+  const lineOaUrl = tenant.lineId
+    ? tenant.lineId.startsWith('http')
+      ? tenant.lineId
+      : 'https://line.me/R/ti/p/' + (tenant.lineId.startsWith('@') ? tenant.lineId : '@' + tenant.lineId)
+    : ''
 
   const openDaysText = tenant.openDays?.length
     ? tenant.openDays
