@@ -60,46 +60,45 @@ export async function createRichMenuForTenant(
     ctx.fillStyle = "#0D9488";
     ctx.fillRect(0, 0, 2500, 843);
 
-    ctx.strokeStyle = "#0B8478";
+    ctx.strokeStyle = "rgba(255,255,255,0.3)";
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(833, 0);
-    ctx.lineTo(833, 843);
+    ctx.moveTo(833, 100);
+    ctx.lineTo(833, 743);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(1667, 0);
-    ctx.lineTo(1667, 843);
+    ctx.moveTo(1667, 100);
+    ctx.lineTo(1667, 743);
     ctx.stroke();
 
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 60px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    const drawIcon = (cx: number, cy: number, emoji: string) => {
+    const drawCircleIcon = (cx: number, cy: number, iconText: string) => {
       ctx.fillStyle = "rgba(255,255,255,0.2)";
       ctx.beginPath();
-      ctx.arc(cx, cy - 80, 70, 0, Math.PI * 2);
+      ctx.arc(cx, cy - 60, 80, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = "#FFFFFF";
-      ctx.font = "bold 70px sans-serif";
-      ctx.fillText(emoji, cx, cy - 80);
+      ctx.font = "bold 80px Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(iconText, cx, cy - 55);
     };
 
-    drawIcon(416, 421, "📅");
-    ctx.font = "bold 50px sans-serif";
+    drawCircleIcon(416, 380, "+");
     ctx.fillStyle = "#FFFFFF";
-    ctx.fillText("จองคิว", 416, 481);
+    ctx.font = "bold 65px Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("จองคิว", 416, 480);
 
-    drawIcon(1250, 421, "📋");
-    ctx.font = "bold 50px sans-serif";
+    drawCircleIcon(1250, 380, "=");
     ctx.fillStyle = "#FFFFFF";
-    ctx.fillText("เช็คการจอง", 1250, 481);
+    ctx.font = "bold 55px Arial, sans-serif";
+    ctx.fillText("เช็คการจอง", 1250, 480);
 
-    drawIcon(2083, 421, "📞");
-    ctx.font = "bold 50px sans-serif";
+    drawCircleIcon(2083, 380, "?");
     ctx.fillStyle = "#FFFFFF";
-    ctx.fillText("ติดต่อเรา", 2083, 481);
+    ctx.font = "bold 60px Arial, sans-serif";
+    ctx.fillText("ติดต่อเรา", 2083, 480);
 
     const imageBuffer = canvas.toBuffer("image/png");
 
