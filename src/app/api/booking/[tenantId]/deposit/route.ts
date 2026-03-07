@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import admin from 'firebase-admin'
 
 export async function POST(request: Request, { params }: { params: { tenantId: string } }) {
+  console.log('[deposit] omise key prefix:', process.env.OMISE_SECRET_KEY?.substring(0, 15))
   try {
     const { tenantId } = params
     const body = await request.json()
