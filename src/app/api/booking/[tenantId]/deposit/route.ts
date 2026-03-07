@@ -22,28 +22,47 @@ export async function POST(request: Request, { params }: { params: { tenantId: s
       const chargeAmount = Math.round(depositAmount * (chargePercent / 100) * 100) / 100
       const totalAmount = depositAmount + chargeAmount
 
-      const omise = require('omise')({ secretKey: process.env.OMISE_SECRET_KEY })
+      console.log('[deposit] calling omise with key length:', process.env.OMISE_SECRET_KEY?.length)
+      const omiseSecretKey = process.env.OMISE_SECRET_KEY
+      const basicAuth = Buffer.from(omiseSecretKey + ':').toString('base64')
+      const amountSatang = Math.round(totalAmount * 100)
 
-      const source = await omise.sources.create({
-        type: 'promptpay',
-        amount: Math.round(totalAmount * 100),
-        currency: 'thb',
-      })
-
-      const charge = await omise.charges.create({
-        amount: Math.round(totalAmount * 100),
-        currency: 'thb',
-        source: source.id,
-        metadata: {
-          tenantId,
-          lineUserId,
-          serviceId,
-          staffId: staffId || 'any',
-          date,
-          time,
-          depositAmount: String(depositAmount),
+      const sourceResponse = await fetch('https://api.omise.co/sources', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Basic ' + basicAuth,
+          'Content-Type': 'application/x-www-form-urlencoded'
         },
+        body: new URLSearchParams({
+          type: 'promptpay',
+          amount: String(amountSatang),
+          currency: 'thb'
+        }).toString()
       })
+      const source = await sourceResponse.json()
+      console.log('[deposit] omise source response:', JSON.stringify(source))
+
+      const chargeResponse = await fetch('https://api.omise.co/charges', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Basic ' + basicAuth,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          amount: String(amountSatang),
+          currency: 'thb',
+          source: source.id,
+          'metadata[tenantId]': tenantId,
+          'metadata[lineUserId]': lineUserId,
+          'metadata[serviceId]': serviceId,
+          'metadata[staffId]': staffId || 'any',
+          'metadata[date]': date,
+          'metadata[time]': time,
+          'metadata[depositAmount]': String(depositAmount)
+        }).toString()
+      })
+      const charge = await chargeResponse.json()
+      console.log('[deposit] omise charge response:', JSON.stringify(charge))
 
       await adminDb.collection('tenants').doc(tenantId).collection('pendingDeposits').doc(charge.id).set({
         lineUserId,
