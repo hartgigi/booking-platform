@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Prompt } from 'next/font/google'
 import { adminDb } from '@/lib/firebase/admin'
 
@@ -8,6 +9,16 @@ const prompt = Prompt({
 })
 
 const DAY_NAMES = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { tenantId: string }
+}) {
+  const tenantDoc = await adminDb.collection('tenants').doc(params.tenantId).get()
+  const name = tenantDoc.exists ? (tenantDoc.data()?.name as string) || 'ติดต่อร้าน' : 'ติดต่อร้าน'
+  return { title: name + ' | JongMe' }
+}
 
 export default async function TenantContactPage({
   params,
@@ -57,76 +68,100 @@ export default async function TenantContactPage({
   return (
     <div className={prompt.className} style={{ fontFamily: 'Prompt, sans-serif' }}>
       <div className="min-h-screen bg-[#0F172A] text-white">
-        <div className="max-w-lg mx-auto px-4 py-12">
-          <h1 className="text-2xl font-bold mb-8" style={{ color: '#0D9488' }}>
-            {tenant.name || 'ติดต่อร้าน'}
-          </h1>
+        <div className="max-w-lg mx-auto px-5 py-6 pb-16">
+          <Link
+            href="/contact"
+            className="inline-flex items-center gap-1 text-slate-400 hover:text-[#0D9488] text-sm font-medium mb-6 transition-colors"
+          >
+            ← กลับ
+          </Link>
+
+          <header className="text-center pt-4 pb-10">
+            <h1 className="text-3xl sm:text-4xl font-bold mb-2" style={{ color: '#0D9488' }}>
+              {tenant.name || 'ติดต่อร้าน'}
+            </h1>
+            <p className="text-slate-400 text-lg">ติดต่อร้านค้า</p>
+          </header>
 
           {hasContact ? (
-            <div className="space-y-4">
+            <div className="space-y-5">
               {tenant.phone ? (
-                <div className="p-4 rounded-xl bg-[#1E293B] border border-slate-600/30">
-                  <p className="text-slate-400 text-sm mb-1">เบอร์โทร</p>
+                <div className="p-5 rounded-2xl bg-[#1E293B] border border-slate-600/30">
+                  <p className="text-slate-400 text-sm mb-2 flex items-center gap-2">
+                    <span>📞</span> เบอร์โทร
+                  </p>
+                  <p className="font-medium text-lg mb-3">{tenant.phone}</p>
                   <a
                     href={'tel:' + tenant.phone}
-                    className="font-medium"
-                    style={{ color: '#0D9488' }}
+                    className="inline-flex items-center justify-center w-full py-3 rounded-xl font-semibold text-white transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: '#0D9488' }}
                   >
-                    {tenant.phone}
+                    โทรเลย
                   </a>
                 </div>
               ) : null}
               {tenant.lineId ? (
-                <div className="p-4 rounded-xl bg-[#1E293B] border border-slate-600/30">
-                  <p className="text-slate-400 text-sm mb-1">LINE ID</p>
-                  <p className="font-medium">{tenant.lineId}</p>
+                <div className="p-5 rounded-2xl bg-[#1E293B] border border-slate-600/30">
+                  <p className="text-slate-400 text-sm mb-2 flex items-center gap-2">
+                    <span>💬</span> LINE ID
+                  </p>
+                  <p className="font-medium text-lg mb-4">{tenant.lineId}</p>
                   {lineOaUrl ? (
                     <a
                       href={lineOaUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-block mt-2 px-4 py-2 rounded-lg text-white text-sm font-medium transition-opacity hover:opacity-90"
+                      className="inline-flex items-center justify-center gap-2 w-full py-4 rounded-xl text-white text-base font-semibold transition-opacity hover:opacity-90"
                       style={{ backgroundColor: '#06C755' }}
                     >
-                      เปิดแชท LINE
+                      <span>เปิดแชท LINE</span>
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.121.303.079.778.039 1.085l-.171 1.027c-.053.303-.242 1.186 1.039.647 1.281-.539 6.911-4.078 9.436-6.975C23.666 14.02 24 12.222 24 10.304z" />
+                      </svg>
                     </a>
                   ) : null}
                 </div>
               ) : null}
               {tenant.address ? (
-                <div className="p-4 rounded-xl bg-[#1E293B] border border-slate-600/30">
-                  <p className="text-slate-400 text-sm mb-1">ที่อยู่</p>
+                <div className="p-5 rounded-2xl bg-[#1E293B] border border-slate-600/30">
+                  <p className="text-slate-400 text-sm mb-2 flex items-center gap-2">
+                    <span>📍</span> ที่อยู่
+                  </p>
                   <p className="font-medium">{tenant.address}</p>
                 </div>
               ) : null}
               {(tenant.openTime || tenant.closeTime) ? (
-                <div className="p-4 rounded-xl bg-[#1E293B] border border-slate-600/30">
-                  <p className="text-slate-400 text-sm mb-1">เวลาเปิด-ปิด</p>
+                <div className="p-5 rounded-2xl bg-[#1E293B] border border-slate-600/30">
+                  <p className="text-slate-400 text-sm mb-2 flex items-center gap-2">
+                    <span>🕐</span> เวลาเปิด-ปิด
+                  </p>
                   <p className="font-medium">
                     {tenant.openTime || '–'} – {tenant.closeTime || '–'} น.
                   </p>
                 </div>
               ) : null}
               {openDaysText ? (
-                <div className="p-4 rounded-xl bg-[#1E293B] border border-slate-600/30">
-                  <p className="text-slate-400 text-sm mb-1">วันที่เปิด</p>
+                <div className="p-5 rounded-2xl bg-[#1E293B] border border-slate-600/30">
+                  <p className="text-slate-400 text-sm mb-2 flex items-center gap-2">
+                    <span>📅</span> วันที่เปิด
+                  </p>
                   <p className="font-medium">{openDaysText}</p>
                 </div>
               ) : null}
             </div>
           ) : (
-            <div className="p-6 rounded-xl bg-[#1E293B] border border-slate-600/30 text-center">
-              <p className="text-slate-300 mb-4">ติดต่อผ่าน LINE</p>
+            <div className="p-8 rounded-2xl bg-[#1E293B] border border-slate-600/30 text-center">
+              <p className="text-slate-300 text-lg mb-6">ติดต่อผ่าน LINE</p>
               {lineOaUrl ? (
                 <a
                   href={lineOaUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold transition-all hover:opacity-90"
+                  className="inline-flex items-center justify-center gap-2 w-full max-w-xs mx-auto px-8 py-4 rounded-xl text-white text-lg font-semibold transition-all hover:opacity-90"
                   style={{ backgroundColor: '#06C755' }}
                 >
                   <span>เปิดแชท LINE</span>
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.121.303.079.778.039 1.085l-.171 1.027c-.053.303-.242 1.186 1.039.647 1.281-.539 6.911-4.078 9.436-6.975C23.666 14.02 24 12.222 24 10.304z" />
                   </svg>
                 </a>
