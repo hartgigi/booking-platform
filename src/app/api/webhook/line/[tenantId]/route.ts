@@ -299,6 +299,7 @@ async function sendLineReply(replyToken: string, token: string, messages: object
 async function processEvents(tenantId: string, body: string) {
   try {
     const parsed = JSON.parse(body);
+    console.log("[webhook] events:", JSON.stringify(parsed.events?.map((e: any) => ({ type: e.type, messageType: e.message?.type, text: e.message?.text, postbackData: e.postback?.data }))));
     const tenant = await getTenantById(tenantId);
     if (!tenant) return;
 
@@ -402,13 +403,16 @@ async function handleEvent(event: WebhookEvent, tenant: Tenant) {
   }
 
   if (event.type === "message") {
+    console.log("[webhook] processing event type:", event.type);
     const userId = (event.source as { userId?: string }).userId;
     if (
       (event as { message?: { type?: string; text?: string } }).message?.type === "text" &&
       userId
     ) {
       const text = (event as { message: { text: string } }).message.text;
+      console.log("[webhook] text message received:", (event as { message: { text: string } }).message.text);
       if (text.includes("เช็คการจอง") || text.includes("ตรวจสอบการจอง")) {
+        console.log("[webhook] check booking handler triggered");
         const bookingsSnap = await adminDb
           .collection("tenants")
           .doc(tenantId)
@@ -417,6 +421,7 @@ async function handleEvent(event: WebhookEvent, tenant: Tenant) {
           .orderBy("createdAt", "desc")
           .limit(5)
           .get();
+        console.log("[webhook] bookings found:", bookingsSnap.size);
         if (bookingsSnap.empty) {
           await reply((event as { replyToken: string }).replyToken, [
             {
