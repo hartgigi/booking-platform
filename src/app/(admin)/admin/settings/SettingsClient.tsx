@@ -155,10 +155,11 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
               onChange={setName}
             />
             <FloatingInput
-              label="เบอร์โทรศัพท์"
+              label="เบอร์โทรติดต่อร้าน"
               type="tel"
               value={phone}
               onChange={setPhone}
+              placeholder="เช่น 081-234-5678"
             />
             <FloatingTextarea
               label="ที่อยู่"

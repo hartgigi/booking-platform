@@ -9,6 +9,7 @@ interface FloatingInputProps {
   onChange: (value: string) => void;
   required?: boolean;
   disabled?: boolean;
+  placeholder?: string;
 }
 
 export default function FloatingInput({
@@ -18,6 +19,7 @@ export default function FloatingInput({
   onChange,
   required,
   disabled,
+  placeholder,
 }: FloatingInputProps) {
   const [focused, setFocused] = useState(false);
   const isFloating = focused || value.length > 0;
@@ -32,7 +34,7 @@ export default function FloatingInput({
         onBlur={() => setFocused(false)}
         required={required}
         disabled={disabled}
-        placeholder=" "
+        placeholder={placeholder ?? " "}
         className="peer w-full px-4 pt-6 pb-2 border border-slate-200 rounded-xl bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all disabled:bg-slate-50"
       />
       <label
