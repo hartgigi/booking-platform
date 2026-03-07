@@ -1,4 +1,5 @@
 import type { WebhookEvent, WebhookRequestBody, FlexContainer } from "@line/bot-sdk";
+import { NextResponse } from "next/server";
 import { adminDb, adminStorage } from "@/lib/firebase/admin";
 import { validateLineSignature } from "@/lib/line/client";
 import {
@@ -35,15 +36,32 @@ export async function POST(
   try {
     rawBody = await request.text();
   } catch {
-    return new Response("OK", { status: 200 });
+    return NextResponse.json({ status: "ok" }, { status: 200 });
   }
+  let body: { events?: Array<{ webhookEventId?: string }> };
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    body = {};
+  }
+  const deliveryId =
+    request.headers.get("x-line-delivery-id") ||
+    body.events?.[0]?.webhookEventId ||
+    Date.now().toString();
   const signature = request.headers.get("x-line-signature") ?? "";
-  const res = new Response("OK", { status: 200 });
   const tenant = await getTenantById(tenantId);
-  if (!tenant) return res;
-  if (!validateLineSignature(rawBody, tenant.lineChannelSecret, signature)) return res;
+  if (!tenant) return NextResponse.json({ status: "ok" }, { status: 200 });
+  if (!validateLineSignature(rawBody, tenant.lineChannelSecret, signature)) {
+    return NextResponse.json({ status: "ok" }, { status: 200 });
+  }
+  const dedupRef = adminDb.collection("webhook_dedup").doc(deliveryId);
+  const dedupDoc = await dedupRef.get();
+  if (dedupDoc.exists) {
+    return NextResponse.json({ status: "duplicate" }, { status: 200 });
+  }
+  await dedupRef.set({ processedAt: new Date(), tenantId });
   processEvents(tenantId, rawBody).catch(console.error);
-  return res;
+  return NextResponse.json({ status: "ok" }, { status: 200 });
 }
 
 async function getTenantServices(tenantId: string) {
