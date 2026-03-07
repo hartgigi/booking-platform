@@ -60,7 +60,7 @@ export async function POST(
     return NextResponse.json({ status: "duplicate" }, { status: 200 });
   }
   await dedupRef.set({ processedAt: new Date(), tenantId });
-  processEvents(tenantId, rawBody).catch(console.error);
+  await processEvents(tenantId, rawBody);
   return NextResponse.json({ status: "ok" }, { status: 200 });
 }
 
