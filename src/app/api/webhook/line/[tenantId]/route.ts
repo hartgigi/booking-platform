@@ -414,15 +414,36 @@ async function handleEvent(event: WebhookEvent, tenant: Tenant) {
       console.log("[webhook] text message received:", (event as { message: { text: string } }).message.text);
       if (text.includes("เช็คการจอง") || text.includes("ตรวจสอบการจอง")) {
         console.log("[webhook] check booking handler triggered");
-        const bookingsSnap = await adminDb
-          .collection("tenants")
-          .doc(tenantId)
-          .collection("bookings")
-          .where("customerLineId", "==", userId)
-          .orderBy("createdAt", "desc")
-          .limit(5)
-          .get();
-        console.log("[webhook] bookings found:", bookingsSnap.size);
+        let bookingsSnap: FirebaseFirestore.QuerySnapshot;
+        try {
+          bookingsSnap = await adminDb
+            .collection("tenants")
+            .doc(tenantId)
+            .collection("bookings")
+            .where("customerLineId", "==", userId)
+            .orderBy("createdAt", "desc")
+            .limit(5)
+            .get();
+          console.log("[webhook] query success, count:", bookingsSnap.size);
+        } catch (queryErr: unknown) {
+          console.log("[webhook] query error:", queryErr instanceof Error ? queryErr.message : String(queryErr));
+          try {
+            bookingsSnap = await adminDb
+              .collection("tenants")
+              .doc(tenantId)
+              .collection("bookings")
+              .where("customerLineId", "==", userId)
+              .limit(5)
+              .get();
+            console.log("[webhook] fallback query success, count:", bookingsSnap.size);
+          } catch (fallbackErr: unknown) {
+            console.log("[webhook] fallback query error:", fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr));
+            await reply((event as { replyToken: string }).replyToken, [
+              { type: "text", text: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้งค่ะ" },
+            ]);
+            return;
+          }
+        }
         if (bookingsSnap.empty) {
           await reply((event as { replyToken: string }).replyToken, [
             {
@@ -663,14 +684,36 @@ async function handlePostback(
 
   if (action === "check_booking") {
     console.log("[webhook] check_booking block entered");
-    const bookingsSnap = await adminDb
-      .collection("tenants")
-      .doc(tenantId)
-      .collection("bookings")
-      .where("customerLineId", "==", lineUserId)
-      .orderBy("createdAt", "desc")
-      .limit(5)
-      .get();
+    let bookingsSnap: FirebaseFirestore.QuerySnapshot;
+    try {
+      bookingsSnap = await adminDb
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("bookings")
+        .where("customerLineId", "==", lineUserId)
+        .orderBy("createdAt", "desc")
+        .limit(5)
+        .get();
+      console.log("[webhook] query success, count:", bookingsSnap.size);
+    } catch (queryErr: unknown) {
+      console.log("[webhook] query error:", queryErr instanceof Error ? queryErr.message : String(queryErr));
+      try {
+        bookingsSnap = await adminDb
+          .collection("tenants")
+          .doc(tenantId)
+          .collection("bookings")
+          .where("customerLineId", "==", lineUserId)
+          .limit(5)
+          .get();
+        console.log("[webhook] fallback query success, count:", bookingsSnap.size);
+      } catch (fallbackErr: unknown) {
+        console.log("[webhook] fallback query error:", fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr));
+        await sendLineReply(event.replyToken, [
+          { type: "text", text: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้งค่ะ" },
+        ]);
+        return;
+      }
+    }
     if (bookingsSnap.empty) {
       await sendLineReply(event.replyToken, [
         {
