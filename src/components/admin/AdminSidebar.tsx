@@ -114,11 +114,11 @@ export function AdminSidebar({ tenantName, plan = "trial" }: AdminSidebarProps) 
       >
         <div className="flex h-full flex-col">
           <div className="p-5 border-b border-slate-700/50">
-            <div className="flex items-center gap-2">
-              <div className="h-9 px-3 rounded-full bg-linear-to-r from-teal-500 to-teal-600 flex items-center justify-center shadow-lg shadow-teal-900/30">
-                <span className="text-white font-bold text-sm">J</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="h-9 w-9 shrink-0 rounded-full bg-linear-to-r from-teal-500 to-teal-600 flex items-center justify-center shadow-lg shadow-teal-900/30">
+                <span className="text-white font-bold text-sm">{getInitials(tenantName)}</span>
               </div>
-              <span className="font-semibold text-white">JongMe</span>
+              <span className="font-semibold text-white truncate">{tenantName || "ร้านค้า"}</span>
             </div>
           </div>
           <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
@@ -186,7 +186,7 @@ export function AdminSidebar({ tenantName, plan = "trial" }: AdminSidebarProps) 
       )}
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white shadow-sm">
         <div className="flex h-14 items-center justify-between px-4 lg:pl-[276px] pr-6">
-          <h1 className="text-lg font-semibold text-slate-900">{pageTitle}</h1>
+          <h1 className="text-lg font-semibold text-slate-900 pl-[50px] lg:pl-0">{pageTitle}</h1>
           <div className="flex items-center gap-2">
             <button
               type="button"

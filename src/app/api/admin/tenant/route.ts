@@ -63,7 +63,6 @@ export async function PATCH(request: NextRequest) {
       openTime,
       closeTime,
       openDays,
-      slotDurationMinutes,
       adminLineUserId,
       bankName,
       bankAccountNumber,
@@ -79,7 +78,6 @@ export async function PATCH(request: NextRequest) {
       openTime?: string;
       closeTime?: string;
       openDays?: number[];
-      slotDurationMinutes?: number;
       adminLineUserId?: string;
       bankName?: string;
       bankAccountNumber?: string;
@@ -102,7 +100,6 @@ export async function PATCH(request: NextRequest) {
     if (typeof openTime === "string") updates.openTime = openTime;
     if (typeof closeTime === "string") updates.closeTime = closeTime;
     if (Array.isArray(openDays)) updates.openDays = openDays;
-    if (typeof slotDurationMinutes === "number") updates.slotDurationMinutes = slotDurationMinutes;
     if (typeof adminLineUserId === "string") updates.adminLineUserId = adminLineUserId;
     if (typeof bankName === "string") updates.bankName = bankName;
     if (typeof bankAccountNumber === "string") updates.bankAccountNumber = bankAccountNumber;

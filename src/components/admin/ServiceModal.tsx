@@ -16,32 +16,58 @@ export default function ServiceModal({ tenantId, service, onClose, onSuccess }: 
   const isEdit = !!service
   const [name, setName] = useState(service?.name ?? '')
   const [description, setDescription] = useState(service?.description ?? '')
-  const [duration, setDuration] = useState(service?.durationMinutes ?? 60)
-  const [price, setPrice] = useState(service?.price ?? 0)
+  const [duration, setDuration] = useState(service != null ? String(service.durationMinutes ?? '') : '')
+  const [price, setPrice] = useState(service != null ? String(service.price ?? '') : '')
   const [deposit, setDeposit] = useState(service?.depositAmount ?? 0)
   const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState<{ name?: string; duration?: string; price?: string }>({})
 
   useEffect(() => {
     if (service) {
       setName(service.name ?? '')
       setDescription(service.description ?? '')
-      setDuration(service.durationMinutes ?? 60)
-      setPrice(service.price ?? 0)
+      setDuration(service.durationMinutes != null ? String(service.durationMinutes) : '')
+      setPrice(service.price != null ? String(service.price) : '')
       setDeposit(service.depositAmount ?? 0)
     }
+    setErrors({})
   }, [service])
 
+  function handleNumberChange(
+    raw: string,
+    setter: (v: string) => void
+  ) {
+    if (raw === '0' || raw.startsWith('0')) {
+      setter('')
+      return
+    }
+    setter(raw)
+  }
+
   async function handleSubmit() {
-    if (!name.trim()) return
+    const next: { name?: string; duration?: string; price?: string } = {}
+    if (!name.trim()) next.name = 'กรุณากรอกชื่อบริการ'
+    const durationNum = Number(duration)
+    if (duration === '' || duration == null || isNaN(durationNum) || durationNum <= 0) {
+      next.duration = 'กรุณากรอกระยะเวลา'
+    }
+    const priceNum = Number(price)
+    if (price === '' || price == null || isNaN(priceNum) || priceNum < 0) {
+      next.price = 'กรุณากรอกราคา'
+    }
+    setErrors(next)
+    if (Object.keys(next).length > 0) return
     setLoading(true)
     try {
       const depositAmount = Number(deposit) || 0
+      const durationNum = Number(duration) || 60
+      const priceNum = Number(price) || 0
       if (isEdit) {
         const data = {
           name,
           description,
-          durationMinutes: duration,
-          price,
+          durationMinutes: durationNum,
+          price: priceNum,
           depositAmount,
         }
         console.log('ServiceModal update payload', data)
@@ -50,8 +76,8 @@ export default function ServiceModal({ tenantId, service, onClose, onSuccess }: 
         const data = {
           name,
           description,
-          durationMinutes: duration,
-          price,
+          durationMinutes: durationNum,
+          price: priceNum,
           depositAmount,
           imageUrl: '',
           isActive: true,
@@ -108,10 +134,11 @@ export default function ServiceModal({ tenantId, service, onClose, onSuccess }: 
               <label className="block text-sm font-medium text-slate-700 mb-1.5">ชื่อบริการ *</label>
               <input
                 value={name}
-                onChange={e => setName(e.target.value)}
+                onChange={e => { setName(e.target.value); setErrors(prev => ({ ...prev, name: undefined })) }}
                 placeholder="เช่น ตัดผมชาย"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
+                className={`w-full px-4 py-3 rounded-xl border text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm ${errors.name ? 'border-red-500' : 'border-slate-200'}`}
               />
+              {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">คำอธิบาย</label>
@@ -129,18 +156,24 @@ export default function ServiceModal({ tenantId, service, onClose, onSuccess }: 
                 <input
                   type="number"
                   value={duration}
-                  onChange={e => setDuration(Number(e.target.value))}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
+                  onChange={e => { handleNumberChange(e.target.value, setDuration); setErrors(prev => ({ ...prev, duration: undefined })) }}
+                  onFocus={e => e.target.select()}
+                  placeholder="0"
+                  className={`w-full px-4 py-3 rounded-xl border text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm ${errors.duration ? 'border-red-500' : 'border-slate-200'}`}
                 />
+                {errors.duration && <p className="text-red-500 text-xs mt-1">{errors.duration}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">ราคา (บาท) *</label>
                 <input
                   type="number"
                   value={price}
-                  onChange={e => setPrice(Number(e.target.value))}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
+                  onChange={e => { handleNumberChange(e.target.value, setPrice); setErrors(prev => ({ ...prev, price: undefined })) }}
+                  onFocus={e => e.target.select()}
+                  placeholder="0"
+                  className={`w-full px-4 py-3 rounded-xl border text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm ${errors.price ? 'border-red-500' : 'border-slate-200'}`}
                 />
+                {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">ค่ามัดจำ (บาท)</label>

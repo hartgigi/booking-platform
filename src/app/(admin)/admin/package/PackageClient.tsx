@@ -289,7 +289,7 @@ export function PackageClient() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                <th className="text-left p-3 text-slate-500 font-medium w-40">ฟีเจอร์</th>
+                <th className="text-left p-2 text-slate-500 font-medium max-w-[80px] w-20 text-xs whitespace-nowrap">แพ็คเกจ</th>
                 {PACKAGES.map((p) => (
                   <th key={p.id} className="text-center p-3 font-medium text-slate-900 min-w-[100px]">
                     {p.name}
@@ -299,13 +299,13 @@ export function PackageClient() {
             </thead>
             <tbody>
               <tr className="border-b border-slate-100">
-                <td className="p-3 text-slate-600">ระยะเวลา</td>
+                <td className="p-2 text-slate-600 max-w-[80px] w-20 text-xs whitespace-nowrap">ระยะเวลา</td>
                 {PACKAGES.map((p) => (
                   <td key={p.id} className="p-3 text-center text-slate-700">{p.duration}</td>
                 ))}
               </tr>
               <tr className="border-b border-slate-100">
-                <td className="p-3 text-slate-600">ราคา</td>
+                <td className="p-2 text-slate-600 max-w-[80px] w-20 text-xs whitespace-nowrap">ราคา</td>
                 {PACKAGES.map((p) => (
                   <td key={p.id} className="p-3 text-center font-medium text-slate-900">
                     ฿{p.price.toLocaleString()}
@@ -314,7 +314,7 @@ export function PackageClient() {
               </tr>
               {FEATURES.map((f) => (
                 <tr key={f} className="border-b border-slate-100">
-                  <td className="p-3 text-slate-600">{f}</td>
+                  <td className="p-2 text-slate-600 max-w-[80px] w-20 text-xs whitespace-nowrap truncate" title={f}>{f}</td>
                   {PACKAGES.map((p) => (
                     <td key={p.id} className="p-3 text-center">
                       <Check className="w-4 h-4 text-teal-600 inline-block" />

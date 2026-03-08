@@ -23,6 +23,7 @@ export function ServicesPageClient({ tenantId }: ServicesPageClientProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
   const [page, setPage] = useState(0);
 
@@ -66,10 +67,13 @@ export function ServicesPageClient({ tenantId }: ServicesPageClientProps) {
   }
 
   async function handleToggle(s: Service) {
+    setTogglingId(s.id);
     try {
       await toggleServiceStatus(tenantId, s.id);
     } catch (err) {
       console.error(err);
+    } finally {
+      setTogglingId(null);
     }
   }
 
@@ -178,34 +182,34 @@ export function ServicesPageClient({ tenantId }: ServicesPageClientProps) {
                 key={s.id}
                 className="flex flex-wrap sm:flex-nowrap items-center gap-4 p-4 rounded-2xl bg-white border border-slate-200 card-shadow hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
               >
-                <div className="w-12 h-12 rounded-full bg-linear-to-r from-[#0D9488] to-[#0891B2] flex items-center justify-center shrink-0 text-white shadow-md">
-                  {s.imageUrl ? (
-                    <img src={s.imageUrl} alt="" className="w-full h-full rounded-full object-cover" />
-                  ) : (
-                    <Scissors className="w-6 h-6" />
-                  )}
-                </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="font-semibold text-slate-900">{s.name}</h3>
-                  <div className="flex flex-wrap gap-2 mt-1.5">
-                    <span className="inline-flex rounded-lg bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                      {s.durationMinutes} นาที
-                    </span>
-                    <span className="inline-flex rounded-lg bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                      ฿{s.price.toLocaleString()}
-                    </span>
+                  <div className="text-sm text-slate-600 mt-1.5 space-y-0.5">
+                    <p>ระยะเวลา : {s.durationMinutes} นาที</p>
+                    <p>ราคา : ฿{s.price.toLocaleString()}</p>
+                    <p>ค่ามัดจำ : ฿{(s.depositAmount ?? 0).toLocaleString()}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <span
+                  <button
+                    type="button"
+                    onClick={() => handleToggle(s)}
+                    disabled={togglingId === s.id}
                     className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
-                      s.isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                      "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors border cursor-pointer disabled:opacity-50",
+                      s.isActive
+                        ? "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200"
+                        : "bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
                     )}
+                    aria-label={s.isActive ? "ปิดการใช้งาน" : "เปิดใช้งาน"}
                   >
-                    <span className={cn("w-1.5 h-1.5 rounded-full", s.isActive ? "bg-emerald-500" : "bg-slate-400")} />
-                    {s.isActive ? "เปิด" : "ปิด"}
-                  </span>
+                    {togglingId === s.id ? (
+                      <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                    ) : (
+                      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", s.isActive ? "bg-emerald-500" : "bg-red-400")} />
+                    )}
+                    {togglingId === s.id ? "กำลังเปลี่ยน..." : s.isActive ? "เปิด" : "ปิด"}
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleEdit(s)}

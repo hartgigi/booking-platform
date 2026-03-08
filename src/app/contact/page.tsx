@@ -1,10 +1,10 @@
 'use client'
 
-import { Prompt } from 'next/font/google'
+import { IBM_Plex_Sans_Thai } from 'next/font/google'
 import { useState, useEffect, useRef } from 'react'
 
-const prompt = Prompt({
-  weight: ['400', '500', '600', '700'],
+const ibmPlexSansThai = IBM_Plex_Sans_Thai({
+  weight: ['300', '400', '500', '600', '700'],
   subsets: ['thai', 'latin'],
   display: 'swap',
 })
@@ -96,7 +96,7 @@ export default function ContactPage() {
   ]
 
   return (
-    <div className={prompt.className} style={{ fontFamily: 'Prompt, sans-serif' }}>
+    <div className={ibmPlexSansThai.className} style={{ fontFamily: '"IBM Plex Sans Thai", sans-serif' }}>
       <div className="min-h-screen bg-[#0F172A] text-white">
         <section
           id="hero"
@@ -171,13 +171,17 @@ export default function ContactPage() {
 
         <section id="features" ref={featureSectionRef} className="py-24 px-4 bg-[#0F172A]">
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl sm:text-4xl font-bold text-center mb-4">ทำไมต้องเลือก JongMe?</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-center mb-2">ทำไมต้องเลือก JongMe</h2>
+            <p className="text-slate-400 text-center max-w-2xl mx-auto mb-1">
+              ถ้าคุณอยาก &quot;หยุดตอบแชทซ้ำๆ แล้วเอาเวลาไปดูแลลูกค้าให้เต็มที่&quot; JongMe คือเครื่องมือที่จะเปลี่ยนชีวิตเจ้าของร้านให้ง่ายขึ้นครับ
+            </p>
+            <p className="text-slate-500 text-xs text-center italic mb-12">(JongMe Contract)</p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
               {[
-                { icon: '📅', title: 'จองคิวผ่าน LINE', desc: 'ลูกค้าจองได้ทันทีใน LINE ไม่ต้องโหลดแอปเพิ่ม' },
-                { icon: '🔔', title: 'แจ้งเตือนอัตโนมัติ', desc: 'ระบบแจ้งเตือนลูกค้าและร้านค้าทุกการจอง' },
-                { icon: '💰', title: 'รับมัดจำออนไลน์', desc: 'ลด No-show ด้วยระบบรับมัดจำอัตโนมัติ' },
-                { icon: '📊', title: 'จัดการได้ทุกที่', desc: 'Dashboard สำหรับดูการจองแบบ Real-time' },
+                { icon: '📱', title: 'จองผ่าน LINE 100% (No App Required)', desc: 'ลูกค้าจองง่าย... ไม่ต้องโหลดแอปเพิ่ม', tag: 'สะดวกลูกค้า ถูกใจเจ้าของร้าน (JongMe Contract)' },
+                { icon: '🔔', title: 'แก้ปัญหา No-Show ด้วยระบบเตือนอัจฉริยะ', desc: 'การที่ลูกค้าจองแล้วไม่มาคือความสูญเสีย JongMe มีระบบ Auto-Notification ส่งข้อความเตือนลูกค้าผ่าน LINE ก่อนถึงเวลานัด ช่วยลดการลืมนัดได้มากกว่า 90% และทำให้ร้านบริหารจัดการคิวได้อย่างแม่นยำ', tag: '(JongMe Contract)' },
+                { icon: '💰', title: 'เริ่มต้นฟรี และเติบโตไปพร้อมกัน', desc: 'เราเข้าใจคนทำธุรกิจ JongMe มีแผนให้ทดลองใช้ฟรีเพื่อให้คุณมั่นใจก่อน และเมื่อธุรกิจคุณขยาย แพ็กเกจพรีเมียมของเราก็เริ่มต้นเพียงหลักร้อยต่อเดือน (เฉลี่ยวันละไม่ถึง 10 บาท) ซึ่งคุ้มค่ากว่าการจ้างแอดมินหนึ่งคนหลายเท่าตัว!', tag: '(JongMe Contract)' },
+                { icon: '⚡', title: 'ลดงานแอดมิน 80%', desc: 'ปล่อยให้ระบบทำงานแทน เบื่อไหมกับการต้องคอยตอบ "กี่โมงว่างคะ?" "ช่างคนนี้ว่างไหม?" JongMe จะโชว์ตารางว่างแบบ Real-time ให้ลูกค้าเลือกเอง ระบบจะจดคิวลงตารางให้อัตโนมัติ คุณแค่เปิดดูตอนเช้าทีเดียวว่าวันนี้มีกี่คิว', tag: '(JongMe Contract)' },
               ].map((f, i) => (
                 <div
                   key={f.title}
@@ -193,6 +197,9 @@ export default function ContactPage() {
                     {f.title}
                   </h3>
                   <p className="text-slate-400 text-sm">{f.desc}</p>
+                  {'tag' in f && f.tag && (
+                    <p className="text-slate-500 text-xs mt-2 italic">{f.tag}</p>
+                  )}
                 </div>
               ))}
             </div>
@@ -256,7 +263,16 @@ export default function ContactPage() {
             <h2 className="text-3xl sm:text-4xl font-bold text-center mb-2">
               ราคาที่คุ้มค่า ไม่มีค่าใช้จ่ายซ่อนเร้น
             </h2>
-            <p className="text-slate-400 text-center mb-12">ทดลองใช้ฟรี 15 วัน ไม่ต้องใส่บัตรเครดิต</p>
+            <p className="text-slate-400 text-center mb-6">ทดลองใช้ฟรี 15 วัน ไม่ต้องใส่บัตรเครดิต</p>
+            <div className="text-center mb-8">
+              <a
+                href="#contact"
+                className="inline-block px-8 py-4 rounded-xl font-semibold text-white transition-all hover:scale-105 hover:shadow-lg"
+                style={{ backgroundColor: '#0D9488', boxShadow: '0 0 30px rgba(13,148,136,0.4)' }}
+              >
+                ทดลองใช้ฟรี 15 วัน เริ่มเลย
+              </a>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
                 { name: 'Just Start', price: '฿499', period: '/เดือน', duration: 'ระยะเวลา 1 เดือน', badge: 'เริ่มต้น', highlight: false },
@@ -307,15 +323,12 @@ export default function ContactPage() {
 
         <section id="contact" className="py-24 px-4 bg-[#0F172A]">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl sm:text-4xl font-bold text-center mb-2">ติดต่อเรา</h2>
-            <p className="text-slate-400 text-center mb-12">
-              มีคำถามหรืออยากได้รับคำแนะนำ? ทีมงานเราพร้อมช่วยเหลือคุณ
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-center mb-12">ติดต่อเรา</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[
-                { icon: '📞', label: 'โทรศัพท์', value: '095-619-9886' },
-                { icon: '📧', label: 'อีเมล', value: 'hartza123zazaza@gmail.com' },
-                { icon: '💬', label: 'LINE ID', value: 'natthasetsj' },
+                { icon: '📞', label: 'โทรศัพท์', value: '092-292-6495' },
+                { icon: '📧', label: 'อีเมล', value: 'jongme.help@gmail.com' },
+                { icon: '💬', label: 'LINE ID', value: '@jongme' },
               ].map((c) => (
                 <div
                   key={c.label}
@@ -326,44 +339,6 @@ export default function ContactPage() {
                   <p className="font-medium break-all">{c.value}</p>
                 </div>
               ))}
-            </div>
-            <div className="max-w-xl mx-auto p-6 rounded-2xl bg-[#1E293B] border border-slate-600/30">
-              <form
-                onSubmit={(e) => e.preventDefault()}
-                className="space-y-4"
-              >
-                <div>
-                  <label className="block text-sm text-slate-400 mb-1">ชื่อ</label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-3 rounded-lg bg-[#0F172A] border border-slate-600 text-white placeholder-slate-500 focus:border-[#0D9488] focus:outline-none"
-                    placeholder="ชื่อของคุณ"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-slate-400 mb-1">เบอร์โทร</label>
-                  <input
-                    type="tel"
-                    className="w-full px-4 py-3 rounded-lg bg-[#0F172A] border border-slate-600 text-white placeholder-slate-500 focus:border-[#0D9488] focus:outline-none"
-                    placeholder="เบอร์โทรศัพท์"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-slate-400 mb-1">ข้อความ</label>
-                  <textarea
-                    rows={4}
-                    className="w-full px-4 py-3 rounded-lg bg-[#0F172A] border border-slate-600 text-white placeholder-slate-500 focus:border-[#0D9488] focus:outline-none resize-none"
-                    placeholder="ข้อความของคุณ"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full py-3 rounded-xl font-semibold text-white transition-all hover:opacity-90"
-                  style={{ backgroundColor: '#0D9488' }}
-                >
-                  ส่ง
-                </button>
-              </form>
             </div>
           </div>
         </section>

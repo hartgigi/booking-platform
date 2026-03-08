@@ -27,7 +27,6 @@ import {
   XCircle,
   TrendingUp,
   Plus,
-  FileText,
   CalendarX2,
 } from "lucide-react";
 
@@ -213,21 +212,6 @@ export function DashboardClient({ tenantId }: DashboardClientProps) {
 
   return (
     <div className="p-6 max-w-6xl mx-auto animate-fade-in">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/admin/services"
-            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-700 shadow-md shadow-teal-900/20 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            จองด่วน
-          </Link>
-          <span className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
-            <FileText className="w-4 h-4 text-slate-500" />
-            ดูรายงาน
-          </span>
-        </div>
-      </div>
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
         {statsLoading ? (
           Array.from({ length: 6 }).map((_, i) => (
@@ -352,7 +336,14 @@ export function DashboardClient({ tenantId }: DashboardClientProps) {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 mb-4">
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <Link
+          href="/admin/services"
+          className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-700 shadow-md shadow-teal-900/20 transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          จองด่วน
+        </Link>
         <input
           type="date"
           value={filterDate}

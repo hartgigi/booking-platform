@@ -14,7 +14,6 @@ export interface TenantSettings {
   openTime: string;
   closeTime: string;
   openDays: number[];
-  slotDurationMinutes: number;
   bankName: string;
   bankAccountNumber: string;
   bankAccountName: string;
@@ -79,7 +78,6 @@ export function SettingsGuard() {
             openTime: data.openTime ?? "09:00",
             closeTime: data.closeTime ?? "18:00",
             openDays: Array.isArray(data.openDays) ? data.openDays : [1, 2, 3, 4, 5, 6],
-            slotDurationMinutes: typeof data.slotDurationMinutes === "number" ? data.slotDurationMinutes : 60,
             bankName: data.bankName ?? "",
             bankAccountNumber: data.bankAccountNumber ?? "",
             bankAccountName: data.bankAccountName ?? "",

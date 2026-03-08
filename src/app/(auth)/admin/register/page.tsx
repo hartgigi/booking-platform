@@ -15,23 +15,28 @@ import {
 } from "lucide-react";
 
 const BUSINESS_OPTIONS: { value: string; label: string }[] = [
-  { value: "barbershop", label: "ร้านตัดผม / Barbershop" },
-  { value: "beauty_salon", label: "ร้านเสริมสวย / Beauty Salon" },
-  { value: "spa", label: "สปา / Spa" },
-  { value: "thai_massage", label: "นวดแผนไทย / Thai Massage" },
-  { value: "aesthetic_clinic", label: "คลินิกความงาม / Aesthetic Clinic" },
-  { value: "general_clinic", label: "คลินิกทั่วไป / General Clinic" },
-  { value: "dental_clinic", label: "ทันตกรรม / Dental Clinic" },
-  { value: "nail_salon", label: "ร้านทำเล็บ / Nail Salon" },
-  { value: "fitness", label: "ฟิตเนส / Fitness" },
-  { value: "pilates", label: "โยคะ / Pilates" },
-  { value: "other", label: "อื่นๆ / Other" },
+  { value: "barbershop", label: "ร้านตัดผม" },
+  { value: "beauty_salon", label: "ร้านเสริมสวย" },
+  { value: "spa", label: "สปา" },
+  { value: "thai_massage", label: "นวดแผนไทย" },
+  { value: "aesthetic_clinic", label: "คลินิกความงาม" },
+  { value: "general_clinic", label: "คลินิกทั่วไป" },
+  { value: "dental_clinic", label: "ทันตกรรม" },
+  { value: "nail_salon", label: "ร้านทำเล็บ" },
+  { value: "fitness", label: "ฟิตเนส" },
+  { value: "pilates", label: "โยคะ" },
+  { value: "other", label: "อื่นๆ" },
 ];
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const schema = z
   .object({
     shopName: z.string().min(2, "ชื่อร้านต้องมีอย่างน้อย 2 ตัวอักษร"),
-    email: z.string().min(1, "กรุณากรอกอีเมล").email("รูปแบบอีเมลไม่ถูกต้อง"),
+    email: z
+      .string()
+      .min(1, "กรุณากรอกอีเมล")
+      .regex(EMAIL_REGEX, "กรุณากรอกอีเมลให้ถูกต้อง"),
     password: z.string().min(8, "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร"),
     confirmPassword: z.string().min(1, "กรุณายืนยันรหัสผ่าน"),
     businessType: z.string().min(1, "กรุณาเลือกประเภทธุรกิจ"),
@@ -54,6 +59,7 @@ export default function AdminRegisterPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
+    mode: "onBlur",
     defaultValues: {
       shopName: "",
       email: "",
@@ -190,9 +196,10 @@ export default function AdminRegisterPage() {
                   <label className="block text-sm text-slate-500 mb-1.5">ประเภทธุรกิจ</label>
                   <select
                     className={cn(
-                      "w-full rounded-lg border bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500",
+                      "w-full rounded-lg border bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 whitespace-nowrap",
                       errors.businessType ? "border-red-300" : "border-slate-200"
                     )}
+                    style={{ fontSize: "14px" }}
                     {...register("businessType")}
                   >
                     <option value="">เลือกประเภทธุรกิจ</option>

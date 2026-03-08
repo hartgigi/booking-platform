@@ -32,9 +32,6 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
   const [openDays, setOpenDays] = useState<number[]>(
     Array.isArray(initialTenant.openDays) ? initialTenant.openDays : [1, 2, 3, 4, 5, 6]
   );
-  const [slotDurationMinutes, setSlotDurationMinutes] = useState(
-    initialTenant.slotDurationMinutes
-  );
   const [depositMode, setDepositMode] = useState<"auto" | "manual">(
     initialTenant.depositMode ?? "manual"
   );
@@ -60,9 +57,6 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
     setOpenTime(initialTenant.openTime ?? "09:00");
     setCloseTime(initialTenant.closeTime ?? "18:00");
     setOpenDays(Array.isArray(initialTenant.openDays) ? initialTenant.openDays : [1, 2, 3, 4, 5, 6]);
-    setSlotDurationMinutes(
-      typeof initialTenant.slotDurationMinutes === "number" ? initialTenant.slotDurationMinutes : 60
-    );
     setDepositMode(initialTenant.depositMode ?? "manual");
     setBankName(initialTenant.bankName ?? "");
     setBankAccountNumber(initialTenant.bankAccountNumber ?? "");
@@ -76,7 +70,6 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
     initialTenant.openTime,
     initialTenant.closeTime,
     initialTenant.openDays,
-    initialTenant.slotDurationMinutes,
     initialTenant.depositMode,
     initialTenant.bankName,
     initialTenant.bankAccountNumber,
@@ -119,7 +112,6 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
           openTime,
           closeTime,
           openDays,
-          slotDurationMinutes: Number(slotDurationMinutes) || 60,
           depositMode,
           bankName,
           bankAccountNumber,
@@ -203,17 +195,6 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
                 {label}
               </button>
             ))}
-          </div>
-        </section>
-
-        <section className="border-b border-slate-200 pb-6 mb-6">
-          <div className="max-w-[200px]">
-            <FloatingInput
-              label="ระยะเวลาต่อ slot (นาที)"
-              type="number"
-              value={String(slotDurationMinutes)}
-              onChange={(v) => setSlotDurationMinutes(Number(v) || 60)}
-            />
           </div>
         </section>
 
