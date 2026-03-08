@@ -54,7 +54,6 @@ export default function ContactPage() {
   const [heroScrollY, setHeroScrollY] = useState(0)
   const heroRef = useRef<HTMLElement>(null)
   const statsInView = useInView(0.3)
-  const stat1 = useCountUp(100, statsInView.visible)
   const stat2 = useCountUp(5, statsInView.visible)
   const stat3 = useCountUp(1, statsInView.visible)
   const featuresInView = useInView(0.15)
@@ -90,7 +89,6 @@ export default function ContactPage() {
   }, [])
 
   const stats = [
-    { label: 'ไม่จำกัดฟังก์ชัน', icon: '✨', value: stat1, suffix: '%' },
     { label: 'ตั้งค่าง่าย', icon: '⚙️', value: stat2, suffix: ' นาที' },
     { label: 'รองรับ LINE OA', icon: '💬', value: stat3, suffix: ' แอป' },
   ]
@@ -148,6 +146,22 @@ export default function ContactPage() {
               ref={statsInView.ref}
               className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-16 max-w-3xl mx-auto"
             >
+              <div
+                className="p-5 rounded-xl border border-slate-600/50 bg-[#1E293B]/80 backdrop-blur hover:border-[#0D9488]/50 hover:shadow-lg hover:shadow-[#0D9488]/10 transition-all duration-500"
+                style={{
+                  opacity: statsInView.visible ? 1 : 0,
+                  transform: statsInView.visible ? 'translateY(0)' : 'translateY(20px)',
+                  transitionDelay: '0ms',
+                }}
+              >
+                <span className="text-2xl mb-2 block">📱</span>
+                <span className="text-xl sm:text-2xl font-bold block mb-0.5" style={{ color: '#0D9488' }}>
+                  จองผ่าน LINE 100%
+                </span>
+                <span className="text-slate-300 text-sm block mb-2">(No App Required)</span>
+                <span className="text-slate-400 text-sm block mb-1">ลูกค้าจองง่าย... ไม่ต้องโหลดแอปเพิ่ม</span>
+                <span className="text-slate-500 text-xs italic">สะดวกลูกค้า ถูกใจเจ้าของร้าน</span>
+              </div>
               {stats.map((item, i) => (
                 <div
                   key={item.label}
@@ -155,7 +169,7 @@ export default function ContactPage() {
                   style={{
                     opacity: statsInView.visible ? 1 : 0,
                     transform: statsInView.visible ? 'translateY(0)' : 'translateY(20px)',
-                    transitionDelay: `${i * 80}ms`,
+                    transitionDelay: `${(i + 1) * 80}ms`,
                   }}
                 >
                   <span className="text-2xl mb-2 block">{item.icon}</span>
