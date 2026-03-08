@@ -54,8 +54,6 @@ export default function ContactPage() {
   const [heroScrollY, setHeroScrollY] = useState(0)
   const heroRef = useRef<HTMLElement>(null)
   const statsInView = useInView(0.3)
-  const stat2 = useCountUp(5, statsInView.visible)
-  const stat3 = useCountUp(1, statsInView.visible)
   const featuresInView = useInView(0.15)
   const [featureVisible, setFeatureVisible] = useState(false)
   const featureSectionRef = useRef<HTMLElement>(null)
@@ -87,11 +85,6 @@ export default function ContactPage() {
     io.observe(el)
     return () => io.disconnect()
   }, [])
-
-  const stats = [
-    { label: 'ตั้งค่าง่าย', icon: '⚙️', value: stat2, suffix: ' นาที' },
-    { label: 'รองรับ LINE OA', icon: '💬', value: stat3, suffix: ' แอป' },
-  ]
 
   return (
     <div className={ibmPlexSansThai.className} style={{ fontFamily: '"IBM Plex Sans Thai", sans-serif' }}>
@@ -144,7 +137,7 @@ export default function ContactPage() {
             </a>
             <div
               ref={statsInView.ref}
-              className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-16 max-w-3xl mx-auto"
+              className="mt-16 max-w-md mx-auto"
             >
               <div
                 className="p-5 rounded-xl border border-slate-600/50 bg-[#1E293B]/80 backdrop-blur hover:border-[#0D9488]/50 hover:shadow-lg hover:shadow-[#0D9488]/10 transition-all duration-500"
@@ -162,23 +155,6 @@ export default function ContactPage() {
                 <span className="text-slate-400 text-sm block mb-1">ลูกค้าจองง่าย... ไม่ต้องโหลดแอปเพิ่ม</span>
                 <span className="text-slate-500 text-xs italic">สะดวกลูกค้า ถูกใจเจ้าของร้าน</span>
               </div>
-              {stats.map((item, i) => (
-                <div
-                  key={item.label}
-                  className="p-5 rounded-xl border border-slate-600/50 bg-[#1E293B]/80 backdrop-blur hover:border-[#0D9488]/50 hover:shadow-lg hover:shadow-[#0D9488]/10 transition-all duration-500"
-                  style={{
-                    opacity: statsInView.visible ? 1 : 0,
-                    transform: statsInView.visible ? 'translateY(0)' : 'translateY(20px)',
-                    transitionDelay: `${(i + 1) * 80}ms`,
-                  }}
-                >
-                  <span className="text-2xl mb-2 block">{item.icon}</span>
-                  <span className="text-2xl font-bold block mb-1" style={{ color: '#0D9488' }}>
-                    {item.value}{item.suffix}
-                  </span>
-                  <span className="text-slate-200 font-medium">{item.label}</span>
-                </div>
-              ))}
             </div>
           </div>
         </section>
@@ -194,7 +170,7 @@ export default function ContactPage() {
               {[
                 { icon: '📱', title: 'จองผ่าน LINE 100% (No App Required)', desc: 'ลูกค้าจองง่าย... ไม่ต้องโหลดแอปเพิ่ม', tag: 'สะดวกลูกค้า ถูกใจเจ้าของร้าน (JongMe Contract)' },
                 { icon: '🔔', title: 'แก้ปัญหา No-Show ด้วยระบบเตือนอัจฉริยะ', desc: 'การที่ลูกค้าจองแล้วไม่มาคือความสูญเสีย JongMe มีระบบ Auto-Notification ส่งข้อความเตือนลูกค้าผ่าน LINE ก่อนถึงเวลานัด ช่วยลดการลืมนัดได้มากกว่า 90% และทำให้ร้านบริหารจัดการคิวได้อย่างแม่นยำ', tag: '(JongMe Contract)' },
-                { icon: '💰', title: 'เริ่มต้นฟรี และเติบโตไปพร้อมกัน', desc: 'เราเข้าใจคนทำธุรกิจ JongMe มีแผนให้ทดลองใช้ฟรีเพื่อให้คุณมั่นใจก่อน และเมื่อธุรกิจคุณขยาย แพ็กเกจพรีเมียมของเราก็เริ่มต้นเพียงหลักร้อยต่อเดือน (เฉลี่ยวันละไม่ถึง 10 บาท) ซึ่งคุ้มค่ากว่าการจ้างแอดมินหนึ่งคนหลายเท่าตัว!', tag: '(JongMe Contract)' },
+                { icon: '💰', title: 'เริ่มต้นฟรี และเติบโตไปพร้อมกัน', desc: '⚙️ ตั้งค่าง่าย ภายใน 5 นาที รองรับ LINE OA ทุกร้าน\n\nเราเข้าใจคนทำธุรกิจ JongMe มีแผนให้ทดลองใช้ฟรีเพื่อให้คุณมั่นใจก่อน และเมื่อธุรกิจคุณขยาย แพ็กเกจพรีเมียมของเราก็เริ่มต้นเพียงหลักร้อยต่อเดือน (เฉลี่ยวันละไม่ถึง 10 บาท) ซึ่งคุ้มค่ากว่าการจ้างแอดมินหนึ่งคนหลายเท่าตัว!', tag: '(JongMe Contract)' },
                 { icon: '⚡', title: 'ลดงานแอดมิน 80%', desc: 'ปล่อยให้ระบบทำงานแทน เบื่อไหมกับการต้องคอยตอบ "กี่โมงว่างคะ?" "ช่างคนนี้ว่างไหม?" JongMe จะโชว์ตารางว่างแบบ Real-time ให้ลูกค้าเลือกเอง ระบบจะจดคิวลงตารางให้อัตโนมัติ คุณแค่เปิดดูตอนเช้าทีเดียวว่าวันนี้มีกี่คิว', tag: '(JongMe Contract)' },
               ].map((f, i) => (
                 <div
@@ -210,7 +186,7 @@ export default function ContactPage() {
                   <h3 className="text-lg font-semibold mb-2" style={{ color: '#0D9488' }}>
                     {f.title}
                   </h3>
-                  <p className="text-slate-400 text-sm">{f.desc}</p>
+                  <p className="text-slate-400 text-sm whitespace-pre-line">{f.desc}</p>
                   {'tag' in f && f.tag && (
                     <p className="text-slate-500 text-xs mt-2 italic">{f.tag}</p>
                   )}
