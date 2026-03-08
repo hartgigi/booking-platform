@@ -92,7 +92,7 @@ export default function ContactPage() {
         <section
           id="hero"
           ref={heroRef}
-          className="relative min-h-screen flex flex-col items-center justify-center px-4 py-20 overflow-hidden"
+          className="relative flex flex-col items-center p-6 overflow-hidden"
         >
           <div
             className="absolute inset-0 opacity-40 transition-transform duration-100"
@@ -135,9 +135,15 @@ export default function ContactPage() {
             >
               ทดลองใช้ฟรี 15 วัน
             </a>
+            <h2 className="text-3xl sm:text-4xl font-bold text-center mt-10 mb-2">ทำไมต้องเลือก JongMe</h2>
+            <p className="text-slate-400 text-center max-w-2xl mx-auto mb-1">
+              ถ้าคุณอยาก &quot;หยุดตอบแชทซ้ำๆ แล้วเอาเวลาไปดูแลลูกค้าให้เต็มที่&quot; JongMe คือเครื่องมือที่จะเปลี่ยนชีวิตเจ้าของร้านให้ง่ายขึ้นครับ
+            </p>
+            <p className="text-slate-500 text-xs text-center italic mb-0">(JongMe Contract)</p>
             <div
               ref={statsInView.ref}
-              className="mt-16 max-w-md mx-auto"
+              className="max-w-md mx-auto"
+              style={{ marginTop: 24 }}
             >
               <div
                 className="p-5 rounded-xl border border-slate-600/50 bg-[#1E293B]/80 backdrop-blur hover:border-[#0D9488]/50 hover:shadow-lg hover:shadow-[#0D9488]/10 transition-all duration-500"
@@ -159,14 +165,9 @@ export default function ContactPage() {
           </div>
         </section>
 
-        <section id="features" ref={featureSectionRef} className="py-24 px-4 bg-[#0F172A]">
+        <section id="features" ref={featureSectionRef} className="bg-[#0F172A] pt-8 pb-6 px-6">
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl sm:text-4xl font-bold text-center mb-2">ทำไมต้องเลือก JongMe</h2>
-            <p className="text-slate-400 text-center max-w-2xl mx-auto mb-1">
-              ถ้าคุณอยาก &quot;หยุดตอบแชทซ้ำๆ แล้วเอาเวลาไปดูแลลูกค้าให้เต็มที่&quot; JongMe คือเครื่องมือที่จะเปลี่ยนชีวิตเจ้าของร้านให้ง่ายขึ้นครับ
-            </p>
-            <p className="text-slate-500 text-xs text-center italic mb-12">(JongMe Contract)</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
                 { icon: '📱', title: 'จองผ่าน LINE 100% (No App Required)', desc: 'ลูกค้าจองง่าย... ไม่ต้องโหลดแอปเพิ่ม', tag: 'สะดวกลูกค้า ถูกใจเจ้าของร้าน (JongMe Contract)' },
                 { icon: '🔔', title: 'แก้ปัญหา No-Show ด้วยระบบเตือนอัจฉริยะ', desc: 'การที่ลูกค้าจองแล้วไม่มาคือความสูญเสีย JongMe มีระบบ Auto-Notification ส่งข้อความเตือนลูกค้าผ่าน LINE ก่อนถึงเวลานัด ช่วยลดการลืมนัดได้มากกว่า 90% และทำให้ร้านบริหารจัดการคิวได้อย่างแม่นยำ', tag: '(JongMe Contract)' },
