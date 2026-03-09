@@ -32,6 +32,12 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
   const [openDays, setOpenDays] = useState<number[]>(
     Array.isArray(initialTenant.openDays) ? initialTenant.openDays : [1, 2, 3, 4, 5, 6]
   );
+  const [lineChannelAccessToken, setLineChannelAccessToken] = useState(
+    initialTenant.lineChannelAccessToken ?? ""
+  );
+  const [lineChannelSecret, setLineChannelSecret] = useState(
+    initialTenant.lineChannelSecret ?? ""
+  );
   const [depositMode, setDepositMode] = useState<"auto" | "manual">(
     initialTenant.depositMode ?? "manual"
   );
@@ -57,6 +63,8 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
     setOpenTime(initialTenant.openTime ?? "09:00");
     setCloseTime(initialTenant.closeTime ?? "18:00");
     setOpenDays(Array.isArray(initialTenant.openDays) ? initialTenant.openDays : [1, 2, 3, 4, 5, 6]);
+    setLineChannelAccessToken(initialTenant.lineChannelAccessToken ?? "");
+    setLineChannelSecret(initialTenant.lineChannelSecret ?? "");
     setDepositMode(initialTenant.depositMode ?? "manual");
     setBankName(initialTenant.bankName ?? "");
     setBankAccountNumber(initialTenant.bankAccountNumber ?? "");
@@ -70,6 +78,8 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
     initialTenant.openTime,
     initialTenant.closeTime,
     initialTenant.openDays,
+    initialTenant.lineChannelAccessToken,
+    initialTenant.lineChannelSecret,
     initialTenant.depositMode,
     initialTenant.bankName,
     initialTenant.bankAccountNumber,
@@ -112,6 +122,8 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
           openTime,
           closeTime,
           openDays,
+          lineChannelAccessToken,
+          lineChannelSecret,
           depositMode,
           bankName,
           bankAccountNumber,
@@ -159,6 +171,39 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
               onChange={setAddress}
               rows={3}
             />
+          </div>
+        </section>
+
+        <section className="border-b border-slate-200 pb-6 mb-6 space-y-3">
+          <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider">
+            LINE OA ตั้งค่า
+          </h2>
+          <p className="text-xs text-slate-500">
+            ใส่ Channel Access Token และ Channel Secret ของ LINE OA เพื่อให้ระบบสามารถส่งข้อความและสร้าง Rich Menu ได้
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <FloatingTextarea
+                label="Channel Access Token"
+                value={lineChannelAccessToken}
+                onChange={setLineChannelAccessToken}
+                rows={3}
+              />
+              <p className="mt-1 text-[11px] text-slate-500">
+                วาง Channel Access Token ที่นี่
+              </p>
+            </div>
+            <div className="md:col-span-2">
+              <FloatingInput
+                label="Channel Secret"
+                type="text"
+                value={lineChannelSecret}
+                onChange={setLineChannelSecret}
+              />
+              <p className="mt-1 text-[11px] text-slate-500">
+                วาง Channel Secret ที่นี่
+              </p>
+            </div>
           </div>
         </section>
 

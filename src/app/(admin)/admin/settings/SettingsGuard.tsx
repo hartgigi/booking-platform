@@ -14,6 +14,8 @@ export interface TenantSettings {
   openTime: string;
   closeTime: string;
   openDays: number[];
+  lineChannelAccessToken: string;
+  lineChannelSecret: string;
   bankName: string;
   bankAccountNumber: string;
   bankAccountName: string;
@@ -78,6 +80,8 @@ export function SettingsGuard() {
             openTime: data.openTime ?? "09:00",
             closeTime: data.closeTime ?? "18:00",
             openDays: Array.isArray(data.openDays) ? data.openDays : [1, 2, 3, 4, 5, 6],
+            lineChannelAccessToken: data.lineChannelAccessToken ?? "",
+            lineChannelSecret: data.lineChannelSecret ?? "",
             bankName: data.bankName ?? "",
             bankAccountNumber: data.bankAccountNumber ?? "",
             bankAccountName: data.bankAccountName ?? "",
