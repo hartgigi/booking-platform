@@ -57,6 +57,7 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
   const [lineTestResult, setLineTestResult] = useState<
     { ok: boolean; message: string } | null
   >(null);
+  const [copiedWebhook, setCopiedWebhook] = useState(false);
   const success = useToastStore((s) => s.success);
   const errorToast = useToastStore((s) => s.error);
 
@@ -232,6 +233,42 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
             ใส่ Channel Access Token และ Channel Secret ของ LINE OA เพื่อให้ระบบสามารถส่งข้อความและสร้าง Rich Menu ได้
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2 space-y-1.5">
+              <label className="block text-xs font-medium text-slate-700">
+                Webhook URL (สำหรับตั้งค่าใน LINE Developers)
+              </label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`https://www.jongme.com/api/webhook/line/${initialTenant.id}`}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 overflow-x-auto"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const url = `https://www.jongme.com/api/webhook/line/${initialTenant.id}`;
+                    try {
+                      if (typeof navigator !== "undefined" && navigator.clipboard) {
+                        await navigator.clipboard.writeText(url);
+                      }
+                      setCopiedWebhook(true);
+                      setTimeout(() => setCopiedWebhook(false), 2000);
+                    } catch {
+                      setCopiedWebhook(false);
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-white hover:bg-slate-700 whitespace-nowrap"
+                >
+                  {copiedWebhook ? "✅ คัดลอกแล้ว" : "📋 คัดลอก"}
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                นำ URL นี้ไปวางที่ LINE Developers → Messaging API → Webhook URL แล้วกด Verify
+              </p>
+            </div>
             <div className="md:col-span-2">
               <div className="flex flex-col gap-2">
                 <FloatingTextarea
