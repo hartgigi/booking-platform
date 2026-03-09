@@ -53,6 +53,10 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
   );
   const [creatingMenu, setCreatingMenu] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [testingLine, setTestingLine] = useState(false);
+  const [lineTestResult, setLineTestResult] = useState<
+    { ok: boolean; message: string } | null
+  >(null);
   const success = useToastStore((s) => s.success);
   const errorToast = useToastStore((s) => s.error);
 
@@ -91,6 +95,52 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
     setOpenDays((prev) =>
       prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort((a, b) => a - b)
     );
+  }
+
+  async function handleTestLine() {
+    setLineTestResult(null);
+    if (!lineChannelAccessToken.trim()) {
+      setLineTestResult({
+        ok: false,
+        message: "❌ Token ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง",
+      });
+      return;
+    }
+    setTestingLine(true);
+    try {
+      const res = await fetch("/api/admin/line-test", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${lineChannelAccessToken.trim()}`,
+        },
+        cache: "no-store",
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        botName?: string;
+        message?: string;
+      };
+      if (res.ok && data.ok) {
+        setLineTestResult({
+          ok: true,
+          message: `✅ เชื่อมต่อสำเร็จ: ${data.botName ?? ""}`,
+        });
+      } else {
+        setLineTestResult({
+          ok: false,
+          message:
+            "❌ Token ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง",
+        });
+      }
+    } catch {
+      setLineTestResult({
+        ok: false,
+        message:
+          "❌ Token ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง",
+      });
+    } finally {
+      setTestingLine(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -183,15 +233,41 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <FloatingTextarea
-                label="Channel Access Token"
-                value={lineChannelAccessToken}
-                onChange={setLineChannelAccessToken}
-                rows={3}
-              />
-              <p className="mt-1 text-[11px] text-slate-500">
-                วาง Channel Access Token ที่นี่
-              </p>
+              <div className="flex flex-col gap-2">
+                <FloatingTextarea
+                  label="Channel Access Token"
+                  value={lineChannelAccessToken}
+                  onChange={(v) => {
+                    setLineChannelAccessToken(v);
+                    setLineTestResult(null);
+                  }}
+                  rows={3}
+                />
+                <div className="flex items-center gap-2">
+                  <p className="text-[11px] text-slate-500 flex-1">
+                    วาง Channel Access Token ที่นี่
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleTestLine}
+                    disabled={testingLine}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50"
+                  >
+                    {testingLine ? "กำลังทดสอบ..." : "ทดสอบ"}
+                  </button>
+                </div>
+                {lineTestResult && (
+                  <p
+                    className={
+                      lineTestResult.ok
+                        ? "text-emerald-500 text-xs"
+                        : "text-red-500 text-xs"
+                    }
+                  >
+                    {lineTestResult.message}
+                  </p>
+                )}
+              </div>
             </div>
             <div className="md:col-span-2">
               <FloatingInput
