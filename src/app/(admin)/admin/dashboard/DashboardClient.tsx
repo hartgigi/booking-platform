@@ -337,13 +337,6 @@ export function DashboardClient({ tenantId }: DashboardClientProps) {
       </div>
 
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <Link
-          href="/admin/services"
-          className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-700 shadow-md shadow-teal-900/20 transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          จองด่วน
-        </Link>
         <input
           type="date"
           value={filterDate}

@@ -4,8 +4,8 @@ import { IBM_Plex_Sans_Thai } from 'next/font/google'
 import { useState, useEffect, useRef } from 'react'
 
 const ibmPlexSansThai = IBM_Plex_Sans_Thai({
+  subsets: ['thai'],
   weight: ['300', '400', '500', '600', '700'],
-  subsets: ['thai', 'latin'],
   display: 'swap',
 })
 
@@ -87,7 +87,7 @@ export default function ContactPage() {
   }, [])
 
   return (
-    <div className={ibmPlexSansThai.className} style={{ fontFamily: '"IBM Plex Sans Thai", sans-serif' }}>
+    <main className={ibmPlexSansThai.className} style={{ fontFamily: '"IBM Plex Sans Thai", sans-serif' }}>
       <div className="min-h-screen bg-[#0F172A] text-white">
         <section
           id="hero"
@@ -102,39 +102,23 @@ export default function ContactPage() {
             }}
           />
           <div className="relative z-10 max-w-4xl mx-auto text-center">
-            <h1
-              className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight mb-6 transition-all duration-700"
+            <img
+              src="/banner.png"
+              alt="JongMe Banner"
               style={{
-                opacity: heroMounted ? 1 : 0,
-                transform: heroMounted ? 'translateY(0)' : 'translateY(24px)',
-                transitionDelay: '0ms',
+                width: '100%',
+                borderRadius: '16px',
+                display: 'block',
               }}
-            >
-              ระบบจองคิวอัจฉริยะ สำหรับร้านของคุณ
-            </h1>
-            <p
-              className="text-lg sm:text-xl text-slate-300 mb-10 max-w-2xl mx-auto transition-all duration-700"
-              style={{
-                opacity: heroMounted ? 1 : 0,
-                transform: heroMounted ? 'translateY(0)' : 'translateY(24px)',
-                transitionDelay: `${HERO_STAGGER}ms`,
-              }}
-            >
-              เพิ่มยอดจอง ลดการ No-show จัดการร้านได้ง่ายๆ ผ่าน LINE
-            </p>
+            />
             <a
               href="#pricing"
-              className="inline-block px-8 py-4 rounded-xl font-semibold text-white transition-all duration-700 hover:scale-105 hover:shadow-lg"
-              style={{
-                backgroundColor: '#0D9488',
-                boxShadow: '0 0 30px rgba(13,148,136,0.4)',
-                opacity: heroMounted ? 1 : 0,
-                transform: heroMounted ? 'translateY(0)' : 'translateY(24px)',
-                transitionDelay: `${HERO_STAGGER * 2}ms`,
-              }}
+              className="inline-block mt-6 px-8 py-4 rounded-xl font-semibold text-white transition-all hover:scale-105 hover:shadow-lg"
+              style={{ backgroundColor: '#0D9488', boxShadow: '0 0 30px rgba(13,148,136,0.4)' }}
             >
               ทดลองใช้ฟรี 15 วัน
             </a>
+
             <h2 className="text-3xl sm:text-4xl font-bold text-center mt-10 mb-2">ทำไมต้องเลือก JongMe</h2>
             <p className="text-slate-400 text-center max-w-2xl mx-auto mb-1">
               ถ้าคุณอยาก &quot;หยุดตอบแชทซ้ำๆ แล้วเอาเวลาไปดูแลลูกค้าให้เต็มที่&quot; JongMe คือเครื่องมือที่จะเปลี่ยนชีวิตเจ้าของร้านให้ง่ายขึ้นครับ
@@ -165,7 +149,7 @@ export default function ContactPage() {
           </div>
         </section>
 
-        <section id="features" ref={featureSectionRef} className="bg-[#0F172A] pt-8 pb-6 px-6">
+        <section id="features" ref={featureSectionRef} className="bg-[#0F172A] pt-6 pb-6 px-6">
           <div className="max-w-6xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
@@ -197,57 +181,59 @@ export default function ContactPage() {
           </div>
         </section>
 
-        <section id="video" className="py-24 px-4 bg-[#1a2332]">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl sm:text-4xl font-bold text-center mb-2">
-              ดูวิธีการทำงานของ JongMe
-            </h2>
-            <p className="text-slate-400 text-center mb-12">
-              ตั้งค่าง่าย ใช้งานได้ภายใน 5 นาที
-            </p>
-            <div
-              className="relative w-full max-w-[800px] mx-auto rounded-2xl overflow-hidden transition-all duration-300"
-              style={{
-                aspectRatio: '16/9',
-                boxShadow: '0 0 40px rgba(13,148,136,0.25)',
-                border: '2px solid rgba(13,148,136,0.4)',
-              }}
-            >
-              {!videoPlaying ? (
-                <button
-                  type="button"
-                  onClick={() => setVideoPlaying(true)}
-                  className="absolute inset-0 w-full h-full flex items-center justify-center bg-[#0F172A] hover:bg-[#1E293B] transition-colors group"
-                >
-                  <div
-                    className="w-20 h-20 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
-                    style={{
-                      backgroundColor: 'rgba(13,148,136,0.9)',
-                      boxShadow: '0 0 40px rgba(13,148,136,0.5)',
-                    }}
+        {false && (
+          <section id="video" className="py-24 px-4 bg-[#1a2332]">
+            <div className="max-w-4xl mx-auto">
+              <h2 className="text-3xl sm:text-4xl font-bold text-center mb-2">
+                ดูวิธีการทำงานของ JongMe
+              </h2>
+              <p className="text-slate-400 text-center mb-12">
+                ตั้งค่าง่าย ใช้งานได้ภายใน 5 นาที
+              </p>
+              <div
+                className="relative w-full max-w-[800px] mx-auto rounded-2xl overflow-hidden transition-all duration-300"
+                style={{
+                  aspectRatio: '16/9',
+                  boxShadow: '0 0 40px rgba(13,148,136,0.25)',
+                  border: '2px solid rgba(13,148,136,0.4)',
+                }}
+              >
+                {!videoPlaying ? (
+                  <button
+                    type="button"
+                    onClick={() => setVideoPlaying(true)}
+                    className="absolute inset-0 w-full h-full flex items-center justify-center bg-[#0F172A] hover:bg-[#1E293B] transition-colors group"
                   >
-                    <svg
-                      className="w-10 h-10 text-white ml-1"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
+                    <div
+                      className="w-20 h-20 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
+                      style={{
+                        backgroundColor: 'rgba(13,148,136,0.9)',
+                        boxShadow: '0 0 40px rgba(13,148,136,0.5)',
+                      }}
                     >
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
+                      <svg
+                        className="w-10 h-10 text-white ml-1"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </div>
+                  </button>
+                ) : (
+                  <div className="w-full h-full bg-black">
+                    <video
+                      src=""
+                      controls
+                      className="w-full h-full object-contain"
+                      playsInline
+                    />
                   </div>
-                </button>
-              ) : (
-                <div className="w-full h-full bg-black">
-                  <video
-                    src=""
-                    controls
-                    className="w-full h-full object-contain"
-                    playsInline
-                  />
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         <section id="pricing" className="py-24 px-4 bg-[#0F172A]">
           <div className="max-w-6xl mx-auto">
@@ -300,19 +286,10 @@ export default function ContactPage() {
             <p className="text-slate-400 text-center mt-8 text-sm">
               ทุกแพ็คเกจรวมฟีเจอร์ครบทุกอย่าง ไม่มีค่าใช้จ่ายเพิ่มเติม
             </p>
-            <div className="text-center mt-8">
-              <a
-                href="#contact"
-                className="inline-block px-8 py-4 rounded-xl font-semibold text-white transition-all hover:scale-105 hover:shadow-lg"
-                style={{ backgroundColor: '#0D9488', boxShadow: '0 0 30px rgba(13,148,136,0.4)' }}
-              >
-                ทดลองใช้ฟรี 15 วัน เริ่มเลย
-              </a>
-            </div>
           </div>
         </section>
 
-        <section id="contact" className="py-24 px-4 bg-[#0F172A]">
+        <section id="contact" className="pt-12 pb-24 px-4 bg-[#0F172A]">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl sm:text-4xl font-bold text-center mb-12">ติดต่อเรา</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -343,6 +320,6 @@ export default function ContactPage() {
           </div>
         </footer>
       </div>
-    </div>
+    </main>
   )
 }

@@ -209,13 +209,18 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
               value={name}
               onChange={setName}
             />
-            <FloatingInput
-              label="เบอร์โทรติดต่อร้าน"
-              type="tel"
-              value={phone}
-              onChange={setPhone}
-              placeholder="เช่น 081-234-5678"
-            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                เบอร์โทรติดต่อร้าน
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="เช่น 081-234-5678"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm transition-all"
+              />
+            </div>
             <FloatingTextarea
               label="ที่อยู่"
               value={address}
@@ -462,45 +467,47 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
           </div>
         </section>
 
-        <section className="border-b border-slate-200 pb-6 mb-6 space-y-3">
-          <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider">
-            LINE OA
-          </h2>
-          <p className="text-xs text-slate-500">
-            สร้าง Rich Menu สำหรับให้ลูกค้าจองคิวผ่าน LINE ได้ง่ายขึ้น
-          </p>
-          <button
-            type="button"
-            onClick={async () => {
-              setCreatingMenu(true);
-              try {
-                const res = await fetch("/api/admin/rich-menu", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ tenantId: initialTenant.id }),
-                });
-                const data = await res.json();
-                if (data.success) {
-                  alert("สร้าง Rich Menu สำเร็จ!");
-                } else {
-                  alert(
-                    "ไม่สามารถสร้าง Rich Menu: " +
-                      (data.error || "")
-                  );
+        {false && (
+          <section className="border-b border-slate-200 pb-6 mb-6 space-y-3">
+            <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider">
+              LINE OA
+            </h2>
+            <p className="text-xs text-slate-500">
+              สร้าง Rich Menu สำหรับให้ลูกค้าจองคิวผ่าน LINE ได้ง่ายขึ้น
+            </p>
+            <button
+              type="button"
+              onClick={async () => {
+                setCreatingMenu(true);
+                try {
+                  const res = await fetch("/api/admin/rich-menu", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ tenantId: initialTenant.id }),
+                  });
+                  const data = await res.json();
+                  if (data.success) {
+                    alert("สร้าง Rich Menu สำเร็จ!");
+                  } else {
+                    alert(
+                      "ไม่สามารถสร้าง Rich Menu: " +
+                        (data.error || "")
+                    );
+                  }
+                } catch {
+                  alert("เกิดข้อผิดพลาด");
                 }
-              } catch {
-                alert("เกิดข้อผิดพลาด");
-              }
-              setCreatingMenu(false);
-            }}
-            disabled={creatingMenu}
-            className="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 disabled:opacity-50"
-          >
-            {creatingMenu
-              ? "กำลังสร้าง..."
-              : "📱 สร้าง Rich Menu สำหรับ LINE"}
-          </button>
-        </section>
+                setCreatingMenu(false);
+              }}
+              disabled={creatingMenu}
+              className="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 disabled:opacity-50"
+            >
+              {creatingMenu
+                ? "กำลังสร้าง..."
+                : "📱 สร้าง Rich Menu สำหรับ LINE"}
+            </button>
+          </section>
+        )}
 
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 mb-6">
           <p className="text-sm text-slate-600">

@@ -26,13 +26,14 @@ function getInitials(name: string) {
 }
 
 const DAY_LABELS: Record<number, string> = {
-  0: "อา.",
-  1: "จ.",
-  2: "อ.",
-  3: "พ.",
-  4: "พฤ.",
-  5: "ศ.",
-  6: "ส.",
+  0: "อา",
+  1: "จ",
+  2: "อ",
+  3: "พ",
+  4: "พฤ",
+  5: "ศ",
+  6: "ส",
+  7: "อา",
 };
 
 const DAY_PILL_CLASS: Record<number, string> = {
@@ -43,6 +44,7 @@ const DAY_PILL_CLASS: Record<number, string> = {
   4: "bg-emerald-100 text-emerald-700",
   5: "bg-teal-100 text-teal-700",
   6: "bg-indigo-100 text-indigo-700",
+  7: "bg-rose-100 text-rose-700",
 };
 
 interface StaffPageClientProps {
@@ -56,6 +58,7 @@ export function StaffPageClient({ tenantId }: StaffPageClientProps) {
   const [search, setSearch] = useState("");
   const [filterServiceId, setFilterServiceId] = useState("");
   const [filterWorkDay, setFilterWorkDay] = useState<number | null>(null);
+   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -116,9 +119,11 @@ export function StaffPageClient({ tenantId }: StaffPageClientProps) {
       }
       if (filterServiceId && !s.serviceIds.includes(filterServiceId)) return false;
       if (workDayValue != null && !s.workDays.includes(workDayValue)) return false;
+      if (filterStatus === "active" && !s.isActive) return false;
+      if (filterStatus === "inactive" && s.isActive) return false;
       return true;
     });
-  }, [staffList, search, filterServiceId, filterWorkDay]);
+  }, [staffList, search, filterServiceId, filterWorkDay, filterStatus]);
 
   function handleEdit(s: Staff) {
     setEditingStaff(s);
@@ -239,6 +244,34 @@ export function StaffPageClient({ tenantId }: StaffPageClientProps) {
               ))}
             </div>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              สถานะ
+            </label>
+            <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100 overflow-hidden">
+              {[
+                { key: "all", label: "ทั้งหมด" },
+                { key: "active", label: "เปิด" },
+                { key: "inactive", label: "ปิด" },
+              ].map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  className={cn(
+                    "px-3 py-1.5 text-xs font-medium transition-colors",
+                    filterStatus === opt.key
+                      ? "bg-teal-600 text-white"
+                      : "bg-transparent text-slate-600 hover:bg-slate-200"
+                  )}
+                  onClick={() =>
+                    setFilterStatus(opt.key as "all" | "active" | "inactive")
+                  }
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -299,9 +332,6 @@ export function StaffPageClient({ tenantId }: StaffPageClientProps) {
               </div>
               <div className="p-4 flex-1">
                 <h3 className="font-semibold text-slate-900 truncate">{s.name}</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  รับงานแล้ว <span className="font-medium text-teal-600">{bookingCountByStaff[s.id] ?? 0}</span> ครั้ง
-                </p>
                 <div className="flex flex-wrap gap-1 mt-2">
                   {s.serviceIds.slice(0, 3).map((id) => (
                     <span
@@ -344,7 +374,7 @@ export function StaffPageClient({ tenantId }: StaffPageClientProps) {
                     "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors border cursor-pointer disabled:opacity-50",
                     s.isActive
                       ? "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200"
-                      : "bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200"
+                      : "bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
                   )}
                   aria-label={s.isActive ? "ปิดการใช้งาน" : "เปิดใช้งาน"}
                 >
@@ -354,7 +384,7 @@ export function StaffPageClient({ tenantId }: StaffPageClientProps) {
                     <span
                       className={cn(
                         "w-1.5 h-1.5 rounded-full shrink-0",
-                        s.isActive ? "bg-emerald-500" : "bg-slate-400"
+                        s.isActive ? "bg-emerald-500" : "bg-red-500"
                       )}
                     />
                   )}
