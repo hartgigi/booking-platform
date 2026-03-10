@@ -6,6 +6,7 @@ import type { TenantSettings } from "./SettingsGuard";
 import FloatingInput from "@/components/ui/FloatingInput";
 import { FloatingTextarea } from "@/components/ui/FloatingInput";
 import { cn } from "@/lib/utils/cn";
+import { LineGuide } from "./LineGuide";
 
 const DAY_OPTIONS: { value: number; label: string }[] = [
   { value: 1, label: "จันทร์" },
@@ -58,6 +59,7 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
     { ok: boolean; message: string } | null
   >(null);
   const [copiedWebhook, setCopiedWebhook] = useState(false);
+  const [lineGuideOpen, setLineGuideOpen] = useState(false);
   const success = useToastStore((s) => s.success);
   const errorToast = useToastStore((s) => s.error);
 
@@ -323,6 +325,17 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
               </p>
             </div>
           </div>
+
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => setLineGuideOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 px-4 py-2 text-xs font-medium text-white hover:bg-slate-700 shadow-sm"
+            >
+              <span>📖</span>
+              <span>วิธีเชื่อมต่อ LINE OA</span>
+            </button>
+          </div>
         </section>
 
         <section className="border-b border-slate-200 pb-6 mb-6">
@@ -360,6 +373,8 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
             ))}
           </div>
         </section>
+
+        <LineGuide open={lineGuideOpen} onClose={() => setLineGuideOpen(false)} />
 
         <section className="border-b border-slate-200 pb-6 mb-6 space-y-4">
           <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider">
