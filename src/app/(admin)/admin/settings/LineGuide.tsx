@@ -12,37 +12,31 @@ const STEPS = [
     title: "เข้า LINE Developers Console",
     description:
       "ไปที่ https://developers.line.biz แล้ว Login ด้วยบัญชี LINE ของคุณ",
-    placeholder: "ภาพ: หน้า LINE Developers",
   },
   {
     title: "เลือก Provider และ Channel",
     description:
       "กด Provider ของคุณ → เลือก Messaging API Channel ของร้าน",
-    placeholder: "ภาพ: เลือก Channel",
   },
   {
     title: "เปิดใช้งาน Webhook",
     description:
       "ไปที่แท็บ Messaging API → ตั้งค่า Webhook URL → วาง URL จากระบบ → กด Verify",
-    placeholder: "ภาพ: ตั้งค่า Webhook",
   },
   {
     title: "คัดลอก Channel Access Token",
     description:
       "กด Issue ที่ Channel Access Token → Copy token → วางในช่อง Channel Access Token ในระบบ",
-    placeholder: "ภาพ: Channel Access Token",
   },
   {
     title: "คัดลอก Channel Secret",
     description:
       "ไปที่แท็บ Basic settings → Copy Channel Secret → วางในช่อง Channel Secret ในระบบ",
-    placeholder: "ภาพ: Channel Secret",
   },
   {
     title: "ทดสอบและสร้าง Rich Menu",
     description:
       "กลับมาที่ระบบ → กด ทดสอบ → ถ้าขึ้น ✅ เชื่อมต่อสำเร็จ → กด สร้าง Rich Menu",
-    placeholder: "ภาพ: ทดสอบการเชื่อมต่อ",
   },
 ]
 
@@ -84,10 +78,122 @@ export function LineGuide({ open, onClose }: LineGuideProps) {
                   <p className="text-xs text-slate-600">
                     {step.description}
                   </p>
-                  <div className="mt-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 flex items-center justify-center">
-                    <span className="text-[11px] text-slate-500">
-                      {step.placeholder}
-                    </span>
+                  <div className="mt-3 text-[12px]">
+                    {index === 0 && (
+                      <div className="rounded-lg border border-slate-200 bg-[#1a1a2e] p-3 min-h-[80px] text-slate-50">
+                        <div className="flex items-center justify-between rounded-md bg-emerald-700 px-3 py-1 mb-2 text-[11px]">
+                          <span>LINE Developers</span>
+                          <span className="opacity-80">developers.line.biz</span>
+                        </div>
+                        <p className="text-[12px]">
+                          Log in → เลือก Provider → เลือก Channel
+                        </p>
+                      </div>
+                    )}
+                    {index === 1 && (
+                      <div className="rounded-lg border border-slate-200 bg-[#f8f9fa] p-3 min-h-[80px]">
+                        <div className="flex gap-1 text-[11px] mb-2">
+                          <div className="px-3 py-1 rounded-md bg-slate-200 text-slate-700">
+                            Basic settings
+                          </div>
+                          <div className="px-3 py-1 rounded-md bg-emerald-600 text-white font-semibold">
+                            Messaging API
+                          </div>
+                          <div className="px-3 py-1 rounded-md bg-slate-200 text-slate-700">
+                            LIFF
+                          </div>
+                          <div className="px-3 py-1 rounded-md bg-slate-200 text-slate-700">
+                            Security
+                          </div>
+                        </div>
+                        <p className="text-[12px] text-slate-700">
+                          เลือกแท็บ <span className="font-semibold">Messaging API</span> เพื่อดูการตั้งค่า Webhook และ Token
+                        </p>
+                      </div>
+                    )}
+                    {index === 2 && (
+                      <div className="rounded-lg border border-slate-200 bg-[#f8f9fa] p-3 min-h-[80px]">
+                        <label className="block text-[11px] font-medium text-slate-700 mb-1">
+                          Webhook URL
+                        </label>
+                        <div className="flex flex-col gap-2">
+                          <input
+                            type="text"
+                            readOnly
+                            value="https://www.jongme.com/api/webhook/line/..."
+                            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800"
+                          />
+                          <div className="flex items-center gap-2">
+                            <button className="px-3 py-1 rounded-md bg-emerald-600 text-white text-[11px]">
+                              Verify
+                            </button>
+                            <button className="px-3 py-1 rounded-md border border-slate-300 text-[11px] text-slate-700 bg-white">
+                              Edit
+                            </button>
+                            <div className="ml-auto flex items-center gap-1 text-[11px] text-slate-700">
+                              <span>Use webhook</span>
+                              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {index === 3 && (
+                      <div className="rounded-lg border border-slate-200 bg-[#f8f9fa] p-3 min-h-[80px]">
+                        <label className="block text-[11px] font-medium text-slate-700 mb-1">
+                          Channel access token (long-lived)
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-[14px] tracking-[0.2em] text-slate-500">
+                            ••••••••••••••••••••••••••••••
+                          </div>
+                          <button className="px-3 py-1 rounded-md bg-emerald-600 text-white text-[11px]">
+                            Issue
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {index === 4 && (
+                      <div className="rounded-lg border border-slate-200 bg-[#f8f9fa] p-3 min-h-[80px]">
+                        <div className="flex gap-1 text-[11px] mb-2">
+                          <div className="px-3 py-1 rounded-md bg-emerald-600 text-white font-semibold">
+                            Basic settings
+                          </div>
+                          <div className="px-3 py-1 rounded-md bg-slate-200 text-slate-700">
+                            Messaging API
+                          </div>
+                        </div>
+                        <label className="block text-[11px] font-medium text-slate-700 mb-1">
+                          Channel secret
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-[14px] tracking-[0.3em] text-slate-500">
+                            ••••••••••••••••
+                          </div>
+                          <button className="px-2.5 py-1 rounded-md border border-slate-300 bg-white text-[11px] text-slate-700">
+                            ⧉
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {index === 5 && (
+                      <div className="rounded-lg border border-slate-200 bg-[#f8f9fa] p-3 min-h-[80px]">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-lg">✅</span>
+                          <span className="text-[12px] font-medium text-emerald-700">
+                            เชื่อมต่อสำเร็จ
+                          </span>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <div className="flex-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-700">
+                            ระบบเชื่อมต่อกับ LINE OA แล้ว ตอนนี้คุณสามารถสร้าง Rich Menu เพื่อให้ลูกค้าจองคิวผ่าน LINE ได้
+                          </div>
+                          <button className="px-3 py-1.5 rounded-md bg-teal-600 text-white text-[11px] whitespace-nowrap">
+                            สร้าง Rich Menu
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
