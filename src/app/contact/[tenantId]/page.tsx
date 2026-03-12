@@ -8,6 +8,14 @@ const prompt = Prompt({
   display: 'swap',
 })
 
+const BUSINESS_ICON: Record<string, string> = {
+  salon: '💇‍♀️',
+  spa: '🧖‍♀️',
+  clinic: '🏥',
+  barbershop: '✂️',
+  other: '✨',
+}
+
 const DAY_NAMES = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
 
 export async function generateMetadata({
@@ -42,6 +50,7 @@ export default async function TenantContactPage({
   const tenant = {
     id: tenantId,
     name: (raw?.name as string) || '',
+  businessType: (raw?.businessType as string) || 'other',
     phone: (raw?.phone as string) || '',
     address: (raw?.address as string) || '',
     lineId: (raw?.lineId as string) || (raw?.lineOaId as string) || '',
@@ -78,6 +87,9 @@ export default async function TenantContactPage({
 
           <header className="text-center pt-4 pb-10">
             <h1 className="text-3xl sm:text-4xl font-bold mb-2" style={{ color: '#0D9488' }}>
+              <span className="mr-2">
+                {BUSINESS_ICON[tenant.businessType] ?? BUSINESS_ICON.other}
+              </span>
               {tenant.name || 'ติดต่อร้าน'}
             </h1>
             <p className="text-slate-400 text-lg">ติดต่อร้านค้า</p>
