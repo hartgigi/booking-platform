@@ -43,7 +43,7 @@ function LoginForm() {
         return;
       }
       const { default: liff } = await import("@line/liff");
-      if (!liff.isInitialized()) {
+      if (!(liff as any).isInitialized?.()) {
         await liff.init({ liffId: "2009324540-weVbZ1eR" });
       }
       if (!liff.isLoggedIn()) {
