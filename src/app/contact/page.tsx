@@ -1,10 +1,10 @@
 'use client'
 
-import { Prompt } from 'next/font/google'
+import { Kanit } from 'next/font/google'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
-const prompt = Prompt({
+const contactFont = Kanit({
   subsets: ['thai', 'latin'],
   weight: ['300', '400', '500', '600', '700'],
   display: 'swap',
@@ -89,7 +89,7 @@ export default function ContactPage() {
   }, [])
 
   return (
-    <main className={prompt.className} style={{ fontFamily: 'Prompt, sans-serif' }}>
+    <main className={contactFont.className}>
       <div className="min-h-screen bg-[#0F172A] text-white">
         <section
           id="hero"
