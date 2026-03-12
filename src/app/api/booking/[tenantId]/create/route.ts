@@ -50,8 +50,8 @@ export async function POST(request: Request, { params }: { params: { tenantId: s
       depositStatus: 'none',
       remainingAmount: service?.price || 0,
       remainingStatus: 'pending',
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp() as unknown as admin.firestore.Timestamp,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp() as unknown as admin.firestore.Timestamp,
     }
 
     await bookingRef.set(booking)
