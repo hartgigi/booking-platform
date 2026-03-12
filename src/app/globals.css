@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap");
 
 :root {
   --admin-primary: #0d9488;
@@ -76,7 +76,7 @@ html {
 body {
   background: #f1f5f9;
   color: var(--foreground);
-  font-family: "IBM Plex Sans Thai", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Prompt", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -190,7 +190,7 @@ body.admin-theme {
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "IBM Plex Sans Thai", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Prompt", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, monospace;
 }
 

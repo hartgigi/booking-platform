@@ -1,10 +1,10 @@
 'use client'
 
-import { IBM_Plex_Sans_Thai } from 'next/font/google'
+import { Prompt } from 'next/font/google'
 import { useState, useEffect, useRef } from 'react'
 
-const ibmPlexSansThai = IBM_Plex_Sans_Thai({
-  subsets: ['thai'],
+const prompt = Prompt({
+  subsets: ['thai', 'latin'],
   weight: ['300', '400', '500', '600', '700'],
   display: 'swap',
 })
@@ -87,7 +87,7 @@ export default function ContactPage() {
   }, [])
 
   return (
-    <main className={ibmPlexSansThai.className} style={{ fontFamily: '"IBM Plex Sans Thai", sans-serif' }}>
+    <main className={prompt.className} style={{ fontFamily: 'Prompt, sans-serif' }}>
       <div className="min-h-screen bg-[#0F172A] text-white">
         <section
           id="hero"

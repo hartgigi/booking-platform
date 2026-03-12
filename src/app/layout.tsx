@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Prompt } from "next/font/google";
 import "./globals.css";
 import { ToastContainer } from "@/components/ui/Toast";
 import { FirestoreErrorHandler } from "@/components/shared/FirestoreErrorHandler";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
+const prompt = Prompt({
+  variable: "--font-sans",
+  weight: ["300", "400", "500", "600", "700"],
+  subsets: ["thai", "latin"],
   display: "swap",
 });
 
@@ -21,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th">
-      <body className={`${inter.variable} font-sans antialiased`}>
+    <html lang="th" className={prompt.variable}>
+      <body className="font-sans antialiased">
         <FirestoreErrorHandler />
         {children}
         <ToastContainer />
