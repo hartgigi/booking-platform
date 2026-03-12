@@ -173,7 +173,7 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
       try {
         const liffModule = await import('@line/liff')
         const liff = liffModule.default
-        if (!liff.isInitialized()) {
+        if (!(liff as any).isInitialized?.()) {
           await liff.init({ liffId: '2009324540-weVbZ1eR' })
         }
         if (!liff.isLoggedIn()) {
