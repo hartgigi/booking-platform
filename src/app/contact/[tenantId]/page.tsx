@@ -1,10 +1,10 @@
 import Link from 'next/link'
-import { Prompt } from 'next/font/google'
+import { IBM_Plex_Sans_Thai } from 'next/font/google'
 import { adminDb } from '@/lib/firebase/admin'
 
-const prompt = Prompt({
-  weight: ['400', '500', '600', '700'],
-  subsets: ['thai', 'latin'],
+const ibmPlexSansThai = IBM_Plex_Sans_Thai({
+  weight: ['300', '400', '500', '600', '700'],
+  subsets: ['thai'],
   display: 'swap',
 })
 
@@ -30,7 +30,7 @@ export default async function TenantContactPage({
 
   if (!tenantDoc.exists) {
     return (
-      <div className={prompt.className} style={{ fontFamily: 'Prompt, sans-serif' }}>
+      <div className={ibmPlexSansThai.className} style={{ fontFamily: '"IBM Plex Sans Thai", sans-serif' }}>
         <div className="min-h-screen bg-[#0F172A] text-white flex flex-col items-center justify-center px-6">
           <p className="text-slate-400">ไม่พบร้านที่ต้องการ</p>
         </div>
@@ -66,7 +66,7 @@ export default async function TenantContactPage({
     : ''
 
   return (
-    <div className={prompt.className} style={{ fontFamily: 'Prompt, sans-serif' }}>
+    <div className={ibmPlexSansThai.className} style={{ fontFamily: '"IBM Plex Sans Thai", sans-serif' }}>
       <div className="min-h-screen bg-[#0F172A] text-white">
         <div className="max-w-lg mx-auto px-5 py-6 pb-16">
           <Link
