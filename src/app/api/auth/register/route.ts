@@ -5,10 +5,11 @@ import { FieldValue } from "firebase-admin/firestore";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { idToken, shopName, businessType } = body as {
+    const { idToken, shopName, businessType, trial } = body as {
       idToken?: string;
       shopName?: string;
       businessType?: string;
+      trial?: boolean;
     };
     if (!idToken || !shopName || typeof businessType !== "string") {
       return NextResponse.json(
@@ -34,6 +35,9 @@ export async function POST(request: NextRequest) {
     }
     const tenantRef = adminDb.collection("tenants").doc();
     const now = FieldValue.serverTimestamp();
+    const isTrial = Boolean(trial);
+    const trialDays = 15;
+    const expiryDate = isTrial ? new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000) : null;
     await tenantRef.set({
       name: String(shopName).trim(),
       businessType,
@@ -51,6 +55,8 @@ export async function POST(request: NextRequest) {
       closeTime: "20:00",
       slotDurationMinutes: 60,
       isActive: true,
+      plan: isTrial ? "trial" : "trial",
+      licenseExpiry: expiryDate ? new Date(expiryDate) : null,
       createdAt: now,
       updatedAt: now,
     });

@@ -259,16 +259,6 @@ export function DashboardClient({ tenantId }: DashboardClientProps) {
               <p className="text-2xl font-semibold text-slate-600">{stats.totalCancelled}</p>
               <p className="text-xs text-slate-400 mt-1">เทียบเดือนก่อน —</p>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all col-span-2 lg:col-span-1">
-              <div className="flex items-center gap-2 text-slate-500 mb-1">
-                <TrendingUp className="w-4 h-4 text-teal-600" />
-                <span className="text-xs font-medium">รายได้เดือนนี้</span>
-              </div>
-              <p className="text-2xl font-semibold text-slate-900">
-                ฿{stats.revenueThisMonth.toLocaleString()}
-              </p>
-              <p className="text-xs text-slate-400 mt-1">เทียบเดือนก่อน —</p>
-            </div>
             <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
               <div className="flex items-center gap-2 text-slate-500 mb-1">
                 <Clock className="w-4 h-4 text-amber-500" />
@@ -278,6 +268,16 @@ export function DashboardClient({ tenantId }: DashboardClientProps) {
                 {stats.totalRemainingPending}
               </p>
               <p className="text-xs text-slate-400 mt-1">ยอดคงเหลือที่ยังไม่ชำระ</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all col-span-2 lg:col-span-1">
+              <div className="flex items-center gap-2 text-slate-500 mb-1">
+                <TrendingUp className="w-4 h-4 text-teal-600" />
+                <span className="text-xs font-medium">รายได้เดือนนี้</span>
+              </div>
+              <p className="text-2xl font-semibold text-slate-900">
+                ฿{stats.revenueThisMonth.toLocaleString()}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">เทียบเดือนก่อน —</p>
             </div>
           </>
         )}

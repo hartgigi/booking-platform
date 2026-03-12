@@ -1,6 +1,9 @@
 import { adminDb } from '@/lib/firebase/admin'
 import { NextResponse } from 'next/server'
 import admin from 'firebase-admin'
+import { sendFlexMessage } from '@/lib/line/client'
+import { buildBookingConfirmedMessage } from '@/lib/line/messages'
+import type { Booking } from '@/types'
 
 export async function POST(request: Request, { params }: { params: { tenantId: string } }) {
   try {
@@ -30,7 +33,7 @@ export async function POST(request: Request, { params }: { params: { tenantId: s
     const endTime = `${String(Math.floor(totalMin / 60) % 24).padStart(2, '0')}:${String(totalMin % 60).padStart(2, '0')}`
 
     const bookingRef = adminDb.collection('tenants').doc(tenantId).collection('bookings').doc()
-    const booking = {
+    const booking: Omit<Booking, 'id'> = {
       tenantId,
       customerId: lineUserId,
       customerLineId: lineUserId,
@@ -73,6 +76,16 @@ export async function POST(request: Request, { params }: { params: { tenantId: s
       } catch (err) {
         console.error('Failed to notify admin:', err)
       }
+    }
+
+    // Notify customer on LINE with booking details in rich card format
+    try {
+      const fullBooking: Booking = { id: bookingRef.id, ...(booking as Booking) }
+      const tenantName = (tenant?.name as string) || ''
+      const flex = buildBookingConfirmedMessage(fullBooking, tenantName)
+      await sendFlexMessage(tenantId, lineUserId, 'ยืนยันการจองแล้ว', flex)
+    } catch (err) {
+      console.error('Failed to notify customer:', err)
     }
 
     return NextResponse.json({ bookingId: bookingRef.id, booking })

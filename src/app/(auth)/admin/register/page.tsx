@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -51,6 +52,9 @@ type FormData = z.infer<typeof schema>;
 export default function AdminRegisterPage() {
   const [step, setStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [paymentInfo, setPaymentInfo] = useState<{ qrUrl: string; amount: number } | null>(null);
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const {
     control,
     register,
@@ -77,8 +81,24 @@ export default function AdminRegisterPage() {
   async function onSubmit(data: FormData) {
     setError(null);
     try {
+      const isTrial =
+        (typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("trial")
+          : searchParams.get("trial")) === "true";
+
       const userCredential = await signUp(data.email, data.password);
       const idToken = await userCredential.user.getIdToken();
+      // เก็บ token ไว้ใช้เรียก API ฝั่ง admin ต่อ (เช่น ชำระเงิน)
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("firebaseToken", idToken);
+      }
+      await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+        cache: "no-store",
+      });
+
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -86,6 +106,7 @@ export default function AdminRegisterPage() {
           idToken,
           shopName: data.shopName.trim(),
           businessType: data.businessType,
+          trial: isTrial,
         }),
         cache: "no-store",
       });
@@ -94,6 +115,49 @@ export default function AdminRegisterPage() {
         setError(json.error ?? "สมัครสมาชิกไม่สำเร็จ");
         return;
       }
+
+      // ตอนนี้ยังไม่เชื่อมระบบชำระเงินแพ็คเกจผ่าน Omise
+      // Trial: สมัครเสร็จแล้วเข้าใช้งานได้ทันที
+      if (isTrial) {
+        router.push("/admin/dashboard");
+        return;
+      }
+
+      // สมัครจากหน้าเลือกแพ็คเกจแบบเสียเงิน -> สร้าง QR Omise สำหรับชำระค่ารายเดือน
+      const packageId =
+        (typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("package")
+          : searchParams.get("package")) || "";
+      if (packageId) {
+        try {
+          const checkoutRes = await fetch("/api/admin/package/omise-checkout", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${idToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ packageId }),
+          });
+          const checkoutJson = await checkoutRes.json().catch(() => ({}));
+          if (!checkoutRes.ok || !checkoutJson.qrUrl) {
+            setError(
+              checkoutJson.error ||
+                "ไม่สามารถสร้างคำขอชำระเงินสำหรับแพ็คเกจได้ กรุณาลองใหม่หรือติดต่อทีมงาน"
+            );
+            return;
+          }
+          setPaymentInfo({
+            qrUrl: checkoutJson.qrUrl as string,
+            amount: checkoutJson.amount as number,
+          });
+          return;
+        } catch (e) {
+          setError("ไม่สามารถเชื่อมต่อระบบ Omise ได้ กรุณาลองใหม่");
+          return;
+        }
+      }
+
+      // กรณีทั่วไป (มาจากที่อื่น)
       await signOut();
       window.location.href = "/admin/login?registered=true";
     } catch (err) {
@@ -146,10 +210,25 @@ export default function AdminRegisterPage() {
       </div>
       <div className="w-full lg:w-[40%] flex flex-col items-center justify-center p-8 bg-white">
         <div className="w-full max-w-[360px] animate-scale-in">
-          <h2 className="text-2xl font-semibold text-slate-900 mb-1">
-            JongMe
-          </h2>
-          <p className="text-slate-500 text-sm mb-6">สมัครสมาชิก</p>
+          {!paymentInfo && (
+            <>
+              <h2 className="text-2xl font-semibold text-slate-900 mb-1">
+                JongMe
+              </h2>
+              <p className="text-slate-500 text-sm mb-6">สมัครสมาชิก</p>
+            </>
+          )}
+          {paymentInfo && (
+            <>
+              <h2 className="text-2xl font-semibold text-slate-900 mb-1">
+                ชำระค่ารายเดือนแพ็คเกจ
+              </h2>
+              <p className="text-slate-500 text-sm mb-6">
+                สแกน QR Code ด้วยแอปธนาคารของคุณเพื่อชำระเงิน จากนั้นสามารถเข้าสู่ระบบได้ตามปกติ
+              </p>
+            </>
+          )}
+          {!paymentInfo && (
           <div className="flex gap-2 mb-8">
             <div
               className={cn(
@@ -164,6 +243,33 @@ export default function AdminRegisterPage() {
               )}
             />
           </div>
+          )}
+
+          {paymentInfo ? (
+            <div className="space-y-4">
+              <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center">
+                <img
+                  src={paymentInfo.qrUrl}
+                  alt="Omise QR"
+                  className="w-56 h-56 object-contain rounded-lg bg-white mb-4"
+                />
+                <p className="text-sm text-slate-700">
+                  ยอดชำระ: <span className="font-semibold">฿{paymentInfo.amount.toLocaleString()}</span>
+                </p>
+              </div>
+              <p className="text-xs text-slate-500">
+                หลังจากชำระเงินสำเร็จ ระบบจะต่ออายุแพ็คเกจให้อัตโนมัติ คุณสามารถเข้าสู่ระบบที่{" "}
+                <span className="font-medium text-slate-700">/admin/login</span> ได้เลย
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push("/admin/login")}
+                className="w-full rounded-lg bg-teal-600 py-3 px-4 font-medium text-white hover:bg-teal-700 transition-colors"
+              >
+                ไปหน้าเข้าสู่ระบบ
+              </button>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             {error && (
               <div
@@ -292,6 +398,7 @@ export default function AdminRegisterPage() {
               </div>
             )}
           </form>
+          )}
           <p className="text-center text-slate-500 text-sm mt-6">
             มีบัญชีอยู่แล้ว?{" "}
             <Link

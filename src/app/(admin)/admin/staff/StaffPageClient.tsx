@@ -426,7 +426,7 @@ export function StaffPageClient({ tenantId }: StaffPageClientProps) {
           services={services}
           tenantDefaults={tenantDefaults}
           onClose={handleCloseModal}
-          onSuccess={() => {}}
+          onSuccess={handleCloseModal}
         />
       )}
     </div>

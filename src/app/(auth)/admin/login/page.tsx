@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { signIn } from "@/lib/firebase/auth";
+import { signIn, signInWithAdminCustomToken } from "@/lib/firebase/auth";
 import FloatingInput from "@/components/ui/FloatingInput";
 import {
   LayoutGrid,
@@ -25,6 +25,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const registered = searchParams.get("registered") === "true";
+  const tenantIdFromQuery = searchParams.get("tenantId") || "";
   const {
     control,
     handleSubmit,
@@ -33,6 +34,62 @@ function LoginForm() {
     resolver: zodResolver(schema),
     defaultValues: { email: "", password: "" },
   });
+
+  async function handleLineLogin() {
+    setError(null);
+    try {
+      if (!tenantIdFromQuery) {
+        setError("ไม่พบข้อมูลร้านจาก LINE กรุณาเริ่มจากปุ่ม \"เริ่มใช้งาน\" ในเมนู LINE อีกครั้ง");
+        return;
+      }
+      const { default: liff } = await import("@line/liff");
+      if (!liff.isInitialized()) {
+        await liff.init({ liffId: "2009324540-weVbZ1eR" });
+      }
+      if (!liff.isLoggedIn()) {
+        liff.login({ redirectUri: window.location.href });
+        return;
+      }
+      const profile = await liff.getProfile();
+      if (!profile.userId) {
+        setError("ไม่สามารถอ่านข้อมูล LINE ได้ กรุณาลองใหม่");
+        return;
+      }
+      const res = await fetch("/api/auth/line-admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lineUserId: profile.userId,
+          tenantId: tenantIdFromQuery,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(
+          data?.error ||
+            "ไม่สามารถเข้าสู่ระบบด้วย LINE ได้ กรุณาลองใหม่"
+        );
+        return;
+      }
+      const data = await res.json();
+      const customToken = data.customToken as string;
+      const userCredential = await signInWithAdminCustomToken(customToken);
+      const idToken = await userCredential.user.getIdToken();
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("firebaseToken", idToken);
+      }
+      await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+        cache: "no-store",
+      });
+      router.push("/admin/dashboard");
+    } catch (err) {
+      console.error("LINE admin login error:", err);
+      setError("เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย LINE");
+    }
+  }
 
   async function onSubmit(data: FormData) {
     setError(null);
@@ -183,6 +240,15 @@ function LoginForm() {
               {isSubmitting ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
             </button>
           </form>
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={handleLineLogin}
+              className="w-full rounded-lg border border-[#00B900] py-3 px-4 font-medium text-[#00B900] hover:bg-[#00B900]/5 transition-colors text-sm"
+            >
+              เข้าสู่ระบบด้วย LINE
+            </button>
+          </div>
           <p className="text-center text-slate-500 text-sm mt-6">
             ยังไม่มีบัญชี?{" "}
             <a

@@ -2,6 +2,7 @@
 
 import { Prompt } from 'next/font/google'
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 
 const prompt = Prompt({
   subsets: ['thai', 'latin'],
@@ -50,6 +51,7 @@ function useInView(threshold = 0.2) {
 }
 
 export default function ContactPage() {
+  const router = useRouter()
   const [heroMounted, setHeroMounted] = useState(false)
   const [heroScrollY, setHeroScrollY] = useState(0)
   const heroRef = useRef<HTMLElement>(null)
@@ -111,13 +113,14 @@ export default function ContactPage() {
                 display: 'block',
               }}
             />
-            <a
-              href="#pricing"
+            <button
+              type="button"
+              onClick={() => router.push('/admin/register?trial=true')}
               className="inline-block mt-6 px-8 py-4 rounded-xl font-semibold text-white transition-all hover:scale-105 hover:shadow-lg"
               style={{ backgroundColor: '#0D9488', boxShadow: '0 0 30px rgba(13,148,136,0.4)' }}
             >
               ทดลองใช้ฟรี 15 วัน
-            </a>
+            </button>
 
             <h2 className="text-3xl sm:text-4xl font-bold text-center mt-10 mb-2">ทำไมต้องเลือก JongMe</h2>
             <p className="text-slate-400 text-center max-w-2xl mx-auto mb-1">
@@ -149,9 +152,9 @@ export default function ContactPage() {
           </div>
         </section>
 
-        <section id="features" ref={featureSectionRef} className="bg-[#0F172A] pt-6 pb-6 px-6">
-          <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <section id="features" ref={featureSectionRef} className="bg-[#0F172A] pt-6 pb-6 px-0">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="flex gap-4 overflow-x-auto pb-2 -mx-2 px-2 snap-x snap-mandatory">
               {[
                 { icon: '📱', title: 'จองผ่าน LINE 100% (No App Required)', desc: 'ลูกค้าจองง่าย... ไม่ต้องโหลดแอปเพิ่ม', tag: 'สะดวกลูกค้า ถูกใจเจ้าของร้าน (JongMe Contract)' },
                 { icon: '🔔', title: 'แก้ปัญหา No-Show ด้วยระบบเตือนอัจฉริยะ', desc: 'การที่ลูกค้าจองแล้วไม่มาคือความสูญเสีย JongMe มีระบบ Auto-Notification ส่งข้อความเตือนลูกค้าผ่าน LINE ก่อนถึงเวลานัด ช่วยลดการลืมนัดได้มากกว่า 90% และทำให้ร้านบริหารจัดการคิวได้อย่างแม่นยำ', tag: '(JongMe Contract)' },
@@ -160,7 +163,7 @@ export default function ContactPage() {
               ].map((f, i) => (
                 <div
                   key={f.title}
-                  className="p-6 rounded-2xl bg-[#1E293B] border border-slate-600/30 hover:border-[#0D9488]/40 hover:shadow-xl hover:shadow-[#0D9488]/5 hover:-translate-y-1 transition-all duration-500"
+                  className="min-w-[260px] sm:min-w-[280px] lg:min-w-[260px] p-6 rounded-2xl bg-[#1E293B] border border-slate-600/30 hover:border-[#0D9488]/40 hover:shadow-xl hover:shadow-[#0D9488]/5 hover:-translate-y-1 transition-all duration-500 snap-center"
                   style={{
                     opacity: featureVisible ? 1 : 0,
                     transform: featureVisible ? 'translateY(0)' : 'translateY(32px)',
@@ -240,25 +243,25 @@ export default function ContactPage() {
             <h2 className="text-3xl sm:text-4xl font-bold text-center mb-2">
               ราคาที่คุ้มค่า ไม่มีค่าใช้จ่ายซ่อนเร้น
             </h2>
-            <p className="text-slate-400 text-center mb-6">ทดลองใช้ฟรี 15 วัน ไม่ต้องใส่บัตรเครดิต</p>
+            <p className="text-slate-400 text-center mb-6">เริ่มต้นใช้งานได้ทันที ไม่ต้องใส่บัตรเครดิต</p>
             <div className="text-center mb-8">
               <a
                 href="#contact"
                 className="inline-block px-8 py-4 rounded-xl font-semibold text-white transition-all hover:scale-105 hover:shadow-lg"
                 style={{ backgroundColor: '#0D9488', boxShadow: '0 0 30px rgba(13,148,136,0.4)' }}
               >
-                ทดลองใช้ฟรี 15 วัน เริ่มเลย
+                เริ่มใช้งาน JongMe เลย
               </a>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 gap-6">
               {[
-                { name: 'Just Start', price: '฿499', period: '/เดือน', duration: 'ระยะเวลา 1 เดือน', badge: 'เริ่มต้น', highlight: false },
-                { name: 'Step Up', price: '฿1,390', period: '', sub: '(฿463/เดือน)', duration: 'ระยะเวลา 3 เดือน', badge: 'ประหยัด 7%', highlight: false },
-                { name: 'Keep Going', price: '฿2,990', period: '', sub: '(฿498/เดือน)', duration: 'ระยะเวลา 6 เดือน', badge: 'แนะนำ', highlight: true },
-                { name: 'Together', price: '฿4,990', period: '', sub: '(฿415/เดือน)', duration: 'ระยะเวลา 12 เดือน', badge: 'ประหยัดสูงสุด 17%', highlight: false },
+                { id: 'just_start', name: 'Just Start', price: '฿499', period: '/เดือน', duration: 'ระยะเวลา 1 เดือน', badge: 'เริ่มต้น', highlight: false },
+                { id: 'step_up', name: 'Step Up', price: '฿1,390', period: '', sub: '(฿463/เดือน)', duration: 'ระยะเวลา 3 เดือน', badge: 'ประหยัด 7%', highlight: false },
+                { id: 'keep_going', name: 'Keep Going', price: '฿2,990', period: '', sub: '(฿498/เดือน)', duration: 'ระยะเวลา 6 เดือน', badge: 'แนะนำ', highlight: true },
+                { id: 'together', name: 'Together', price: '฿4,990', period: '', sub: '(฿415/เดือน)', duration: 'ระยะเวลา 12 เดือน', badge: 'ประหยัดสูงสุด 17%', highlight: false },
               ].map((p) => (
                 <div
-                  key={p.name}
+                  key={p.id}
                   className={`relative p-6 rounded-2xl border transition-all duration-300 ${
                     p.highlight
                       ? 'bg-[#1E293B] border-[#0D9488] shadow-lg shadow-[#0D9488]/20 lg:scale-105 z-10 hover:-translate-y-2 hover:shadow-xl hover:shadow-[#0D9488]/30'
@@ -279,7 +282,14 @@ export default function ContactPage() {
                   </div>
                   {p.sub && <p className="text-sm text-slate-400 mb-2">{p.sub}</p>}
                   <p className="text-slate-300 text-sm mb-4">{p.duration}</p>
-                  <p className="text-slate-400 text-sm">ไม่จำกัดฟังก์ชัน</p>
+                  <p className="text-slate-400 text-sm mb-4">ไม่จำกัดฟังก์ชัน</p>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/admin/register?package=${encodeURIComponent(p.id)}`)}
+                    className="mt-2 w-full rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white text-sm font-semibold py-2.5 transition-colors"
+                  >
+                    เลือกแพ็คเกจนี้
+                  </button>
                 </div>
               ))}
             </div>
@@ -289,36 +299,45 @@ export default function ContactPage() {
           </div>
         </section>
 
-        <section id="contact" className="pt-12 pb-24 px-4 bg-[#0F172A]">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl sm:text-4xl font-bold text-center mb-12">ติดต่อเรา</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                { icon: '📞', label: 'โทรศัพท์', value: '092-292-6495' },
-                { icon: '📧', label: 'อีเมล', value: 'jongme.help@gmail.com' },
-                { icon: '💬', label: 'LINE ID', value: '@jongme' },
-              ].map((c) => (
-                <div
-                  key={c.label}
-                  className="p-6 rounded-2xl bg-[#1E293B] border border-slate-600/30 hover:border-[#0D9488]/40 transition-all"
-                >
-                  <span className="text-2xl mb-2 block">{c.icon}</span>
-                  <p className="text-slate-400 text-sm mb-1">{c.label}</p>
-                  <p className="font-medium break-all">{c.value}</p>
+        <section id="contact" className="pt-2 pb-16 px-4 bg-[#0F172A]">
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-3xl sm:text-4xl font-bold text-center mb-10">ติดต่อเรา</h2>
+            <div className="rounded-t-2xl bg-[#020617] border border-slate-700/60 px-6 py-6 sm:px-10 sm:py-8">
+              <div className="mb-6">
+                <p className="text-sm text-teal-400 tracking-wide uppercase mb-1">JongMe Booking Platform</p>
+                <p className="text-sm text-slate-400 max-w-xl">
+                  ระบบจองคิวผ่าน LINE สำหรับร้านตัดผม ร้านเสริมสวย คลินิก และธุรกิจบริการที่ต้องการจัดการคิวแบบมืออาชีพ
+                </p>
+              </div>
+              <div className="space-y-4 text-sm">
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 text-lg">📍</span>
+                  <p className="text-slate-300">
+                    กรุงเทพฯ ประเทศไทย
+                    <br />
+                    ให้บริการทั่วประเทศผ่านระบบออนไลน์
+                  </p>
                 </div>
-              ))}
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">📞</span>
+                  <p className="text-slate-300">092-292-6495</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">📧</span>
+                  <p className="text-slate-300 break-all">jongme.help@gmail.com</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">💬</span>
+                  <p className="text-slate-300">@jongme (LINE Official Account)</p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-b-2xl bg-[#020617] border-x border-b border-slate-700/60 px-6 py-4 sm:px-10 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <span className="font-semibold text-teal-400">JongMe</span>
+              <span className="text-xs text-slate-500">© 2026 JongMe Booking Platform</span>
             </div>
           </div>
         </section>
-
-        <footer className="py-8 px-4 bg-[#0F172A] border-t border-slate-700/50">
-          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-            <span className="font-semibold" style={{ color: '#0D9488' }}>
-              JongMe
-            </span>
-            <span className="text-slate-500 text-sm">© 2026</span>
-          </div>
-        </footer>
       </div>
     </main>
   )

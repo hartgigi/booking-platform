@@ -4,6 +4,7 @@ import {
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  signInWithCustomToken,
   type User,
   type Unsubscribe,
 } from "firebase/auth";
@@ -40,4 +41,9 @@ export async function getIdToken(): Promise<string | null> {
   const user = await getCurrentUser();
   if (!user) return null;
   return user.getIdToken();
+}
+
+export async function signInWithAdminCustomToken(customToken: string) {
+  const userCredential = await signInWithCustomToken(auth, customToken);
+  return userCredential;
 }

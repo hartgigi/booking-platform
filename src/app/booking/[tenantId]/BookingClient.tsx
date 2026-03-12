@@ -128,7 +128,15 @@ const styles = {
     cursor: disabled ? 'not-allowed' : 'pointer',
     transition: 'all 0.2s'
   }),
-  summaryCard: { backgroundColor: '#fff', borderRadius: '16px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' },
+  summaryCard: {
+    backgroundColor: '#fff',
+    borderRadius: '16px',
+    padding: '20px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    width: '100%',
+    maxWidth: 480,
+    margin: '0 auto',
+  },
   summaryRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' },
   summaryLabel: { color: '#9CA3AF', fontSize: '14px' },
   summaryValue: { fontWeight: '600', color: '#1F2937' },
@@ -156,6 +164,32 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
   const [liffProfile, setLiffProfile] = useState<any>(null)
 
   const steps = ['เลือกบริการ', 'เลือกช่าง', 'เลือกวัน/เวลา', 'ยืนยันการจอง']
+
+  // โหลดโปรไฟล์ LINE ผ่าน LIFF เพื่อผูกการจองกับไอดีลูกค้าใน LINE
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (typeof window === 'undefined') return
+      try {
+        const liffModule = await import('@line/liff')
+        const liff = liffModule.default
+        if (!liff.isInitialized()) {
+          await liff.init({ liffId: '2009324540-weVbZ1eR' })
+        }
+        if (!liff.isLoggedIn()) {
+          liff.login()
+          return
+        }
+        const profile = await liff.getProfile()
+        if (!cancelled) setLiffProfile(profile)
+      } catch (err) {
+        console.error('LIFF init error:', err)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!selectedDate || !selectedService || !tenantId) return

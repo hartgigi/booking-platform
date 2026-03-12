@@ -4,6 +4,8 @@ import type { FlexContainer } from "@line/bot-sdk";
 import { adminDb } from "@/lib/firebase/admin";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { buildLineStaffFlex } from "@/lib/line/messages";
+import { getPackageById, PACKAGE_ID_TO_PLAN } from "@/lib/packages";
+import type { TenantPlan } from "@/types";
 
 async function getTenantById(tenantId: string) {
   const snap = await adminDb.collection("tenants").doc(tenantId).get();
@@ -87,6 +89,63 @@ export async function POST(request: Request) {
 
     if (body.key === "charge.complete" && body.data?.status === "successful") {
       const metadata = body.data.metadata ?? {};
+      const mode = metadata.mode as string | undefined;
+
+      // กรณีเป็นการชำระเงินแพ็คเกจร้านค้า
+      if (mode === "tenantPackage") {
+        const tenantId = metadata.tenantId as string;
+        const packageId = metadata.packageId as string;
+        if (!tenantId || !packageId) {
+          return new Response("OK", { status: 200 });
+        }
+        const pkg = getPackageById(packageId);
+        if (!pkg) {
+          return new Response("OK", { status: 200 });
+        }
+        const tenantRef = adminDb.collection("tenants").doc(tenantId);
+        const tenantSnap = await tenantRef.get();
+        if (!tenantSnap.exists) {
+          return new Response("OK", { status: 200 });
+        }
+        const data = tenantSnap.data() || {};
+        const currentExpiry = data.licenseExpiry as
+          | { toDate?: () => Date }
+          | null
+          | undefined;
+        let baseDate: Date;
+        if (currentExpiry?.toDate) {
+          const exp = currentExpiry.toDate();
+          baseDate = exp.getTime() > Date.now() ? exp : new Date();
+        } else {
+          baseDate = new Date();
+        }
+        const newExpiry = new Date(
+          baseDate.getTime() + pkg.durationDays * 24 * 60 * 60 * 1000
+        );
+        const plan =
+          PACKAGE_ID_TO_PLAN[
+            packageId as keyof typeof PACKAGE_ID_TO_PLAN
+          ] as TenantPlan;
+        await tenantRef.update({
+          licenseExpiry: Timestamp.fromDate(newExpiry),
+          plan,
+          updatedAt: Timestamp.now(),
+        });
+        const paymentRef = tenantRef.collection("payments").doc();
+        const amountRaw = Number(body.data.amount) || pkg.price * 100;
+        const amount = amountRaw / 100;
+        await paymentRef.set({
+          amount,
+          packageId,
+          packageName: pkg.name,
+          omiseChargeId: body.data.id,
+          createdAt: Timestamp.now(),
+          status: "success",
+        });
+        return new Response("OK", { status: 200 });
+      }
+
+      // กรณีเป็นการชำระมัดจำการจอง
       const tenantId = metadata.tenantId as string;
       const lineUserId = metadata.lineUserId as string;
       const serviceId = metadata.serviceId as string;
@@ -224,32 +283,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (body.key === "charge.complete" && body.data?.status === "failed") {
-      const metadata = body.data.metadata ?? {};
-      const tenantId = metadata.tenantId as string;
-      const lineUserId = metadata.lineUserId as string;
-      if (tenantId && lineUserId) {
-        const tenant = await getTenantById(tenantId);
-        if (tenant) {
-          await fetch("https://api.line.me/v2/bot/message/push", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${tenant.lineChannelAccessToken}`,
-            },
-            body: JSON.stringify({
-              to: lineUserId,
-              messages: [
-                {
-                  type: "text",
-                  text: "การชำระเงินไม่สำเร็จ ❌\nกรุณาลองใหม่อีกครั้งครับ",
-                },
-              ],
-            }),
-          });
-        }
-      }
-    }
+    // charge.failed ของฝั่งมัดจำ/แพ็คเกจ: ปัจจุบันไม่ต้องทำอะไรเป็นพิเศษ
 
     return new Response("OK", { status: 200 });
   } catch (err) {
