@@ -86,7 +86,7 @@ export async function POST(request: Request, { params }: { params: { tenantId: s
 
     // Notify customer on LINE with booking details in rich card format
     try {
-      const fullBooking: Booking = { id: bookingRef.id, ...(booking as Booking) }
+      const fullBooking: Booking = { ...(booking as Booking), id: bookingRef.id }
       const tenantName = (tenant?.name as string) || ''
       const flex = buildBookingConfirmedMessage(fullBooking, tenantName)
       await sendFlexMessage(tenantId, lineUserId, 'ยืนยันการจองแล้ว', flex)
