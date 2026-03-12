@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -49,7 +50,7 @@ const schema = z
 
 type FormData = z.infer<typeof schema>;
 
-export default function AdminRegisterPage() {
+function RegisterClient() {
   const [step, setStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [paymentInfo, setPaymentInfo] = useState<{ qrUrl: string; amount: number } | null>(null);
@@ -411,5 +412,13 @@ export default function AdminRegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AdminRegisterPage() {
+  return (
+    <Suspense fallback={<div className="p-4">กำลังโหลด...</div>}>
+      <RegisterClient />
+    </Suspense>
   );
 }

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
+import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function StartPage() {
+function StartPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -74,4 +75,13 @@ export default function StartPage() {
     </div>
   );
 }
+
+export default function StartPage() {
+  return (
+    <Suspense fallback={<div className="p-4">กำลังโหลด...</div>}>
+      <StartPageClient />
+    </Suspense>
+  );
+}
+
 
