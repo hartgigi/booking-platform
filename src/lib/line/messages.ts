@@ -502,11 +502,15 @@ export function buildBookingConfirmedMessage(
     footer: {
       type: "box",
       layout: "horizontal",
+      spacing: "md",
+      paddingAll: "md",
       contents: [
         {
           type: "button",
           style: "primary",
           color: "#0D9488",
+          height: "sm",
+          flex: 1,
           action: {
             type: "postback",
             label: "เลื่อนนัด",
@@ -517,6 +521,8 @@ export function buildBookingConfirmedMessage(
           type: "button",
           style: "secondary",
           color: "#F97373",
+          height: "sm",
+          flex: 1,
           action: {
             type: "postback",
             label: "ยกเลิกนัด",
@@ -524,7 +530,6 @@ export function buildBookingConfirmedMessage(
           },
         },
       ],
-      paddingAll: "md",
     },
   };
 }
