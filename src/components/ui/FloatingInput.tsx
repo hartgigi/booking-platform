@@ -21,7 +21,26 @@ const EyeIcon = () => (
 
 const EyeOffIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878a4.5 4.5 0 106.262 6.262M4.031 4.031a10.05 10.05 0 011.563 3.029 9.97 9.97 0 011.563 3.029m12.015-6.058a10.05 10.05 0 01-1.563 3.029 9.97 9.97 0 01-1.563 3.029m-2.121-2.121a4.5 4.5 0 00-6.262-6.262M9.88 9.88a4.5 4.5 0 01-6.262-6.262" />
+    {/* same eye shape */}
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+    />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+    />
+    {/* diagonal slash */}
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M4 4l16 16"
+    />
   </svg>
 );
 
@@ -69,7 +88,7 @@ export default function FloatingInput({
           className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 focus:outline-none"
           aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
         >
-          {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+          {showPassword ? <EyeIcon /> : <EyeOffIcon />}
         </button>
       )}
     </div>

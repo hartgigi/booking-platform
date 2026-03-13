@@ -13,12 +13,15 @@ import {
   buildLineCancelConfirmFlex,
   buildBookingSuccessMessage,
   buildBookingCancelledMessage,
+  buildLineRescheduleDatePickerFlex,
+  buildLineRescheduleTimeSlotsFlex,
 } from "@/lib/line/messages";
 import {
   notifyAdminNewBooking,
   notifyAdminBookingCancelledByUser,
 } from "@/lib/line/notify";
 import { createBooking, cancelBooking } from "@/lib/firebase/createBooking";
+import { scheduleReminder, cancelReminder } from "@/lib/booking/reminderScheduler";
 import type { Tenant, Customer, Booking } from "@/types";
 import { FieldValue } from "firebase-admin/firestore";
 import { format, addDays, getDay } from "date-fns";
@@ -765,6 +768,45 @@ async function handlePostback(
     return;
   }
 
+  if (action === "reschedule") {
+    const bookingId = params.bookingId;
+    if (!bookingId) return;
+    const bookingRef = adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("bookings")
+      .doc(bookingId);
+    const snap = await bookingRef.get();
+    if (!snap.exists) {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่พบการจอง" }]);
+      return;
+    }
+    const b = snap.data() as Booking;
+    if (b.tenantId !== tenantId || b.customerLineId !== lineUserId) {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่สามารถเลื่อนนัดนี้ได้" }]);
+      return;
+    }
+    if (b.status !== "open" && b.status !== "confirmed") {
+      await sendLineReply(event.replyToken, [
+        { type: "text", text: "นัดนี้ไม่สามารถเลื่อนได้ (สถานะไม่ใช่กำลังจะมาถึง)" },
+      ]);
+      return;
+    }
+    const openDays = tenant.openDays ?? [1, 2, 3, 4, 5, 6];
+    const dates = getNext7OpenDates(openDays);
+    if (!dates.length) {
+      await sendLineReply(event.replyToken, [
+        { type: "text", text: "ไม่มีวันว่างใน 2 สัปดาห์ถัดไป" },
+      ]);
+      return;
+    }
+    const flex = buildLineRescheduleDatePickerFlex(bookingId, dates);
+    await sendLineReply(event.replyToken, [
+      { type: "flex", altText: "เลือกวันใหม่", contents: flex },
+    ]);
+    return;
+  }
+
   if (action === "start_booking") {
     const openDays = tenant.openDays ?? [1, 2, 3, 4, 5, 6];
     const dates = getNext7OpenDates(openDays);
@@ -787,6 +829,41 @@ async function handlePostback(
     }
     const flex = buildLineServicesFlex(date, services);
     await sendLineReply(event.replyToken, [{ type: "flex", altText: "เลือกบริการ", contents: flex }]);
+    return;
+  }
+
+  if (action === "reschedule_select_date") {
+    const bookingId = params.bookingId;
+    const date = params.date;
+    if (!bookingId || !date) return;
+    const bookingRef = adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("bookings")
+      .doc(bookingId);
+    const snap = await bookingRef.get();
+    if (!snap.exists) {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่พบการจอง" }]);
+      return;
+    }
+    const b = snap.data() as Booking;
+    if (b.tenantId !== tenantId || b.customerLineId !== lineUserId) {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่สามารถเลื่อนนัดนี้ได้" }]);
+      return;
+    }
+    const serviceId = b.serviceId;
+    const staffId = b.staffId;
+    const slots = await getAvailableSlotsForStaff(tenantId, staffId, serviceId, date);
+    if (!slots.length || !slots.some((s) => s.isAvailable)) {
+      await sendLineReply(event.replyToken, [
+        { type: "text", text: "ไม่มีเวลาว่างในวันนี้ กรุณาเลือกวันอื่น" },
+      ]);
+      return;
+    }
+    const flex = buildLineRescheduleTimeSlotsFlex(bookingId, date, slots);
+    await sendLineReply(event.replyToken, [
+      { type: "flex", altText: "เลือกเวลาใหม่", contents: flex },
+    ]);
     return;
   }
 
@@ -1097,6 +1174,47 @@ async function handlePostback(
     });
     await sendLineReply(event.replyToken, [
       { type: "flex", altText: "สรุปการจอง", contents: flex },
+    ]);
+    return;
+  }
+
+  if (action === "reschedule_select_time") {
+    const bookingId = params.bookingId;
+    const date = params.date;
+    const time = params.time;
+    if (!bookingId || !date || !time) return;
+    const bookingRef = adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("bookings")
+      .doc(bookingId);
+    const snap = await bookingRef.get();
+    if (!snap.exists) {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่พบการจอง" }]);
+      return;
+    }
+    const current = snap.data() as Booking;
+    if (current.tenantId !== tenantId || current.customerLineId !== lineUserId) {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่สามารถเลื่อนนัดนี้ได้" }]);
+      return;
+    }
+    const serviceId = current.serviceId;
+    const serviceData = await getServiceDoc(tenantId, serviceId);
+    const durationMinutes = (serviceData?.durationMinutes as number) ?? 60;
+    const newEndTime = calculateEndTime(time, durationMinutes);
+    await bookingRef.update({
+      date,
+      startTime: time,
+      endTime: newEndTime,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    await cancelReminder(tenantId, bookingId).catch(() => {});
+    await scheduleReminder(tenantId, bookingId).catch(() => {});
+    const updatedSnap = await bookingRef.get();
+    const updated = { id: updatedSnap.id, ...(updatedSnap.data() as any) } as Booking;
+    const flex = buildBookingConfirmedMessage(updated, tenant.name ?? "");
+    await sendLineReply(event.replyToken, [
+      { type: "flex", altText: "เลื่อนนัดสำเร็จ", contents: flex },
     ]);
     return;
   }

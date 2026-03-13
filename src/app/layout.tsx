@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import { Prompt } from "next/font/google";
+import { Kanit } from "next/font/google";
 import "./globals.css";
 import { ToastContainer } from "@/components/ui/Toast";
 import { FirestoreErrorHandler } from "@/components/shared/FirestoreErrorHandler";
 
-const prompt = Prompt({
-  variable: "--font-sans",
+const kanit = Kanit({
   weight: ["300", "400", "500", "600", "700"],
   subsets: ["thai", "latin"],
   display: "swap",
@@ -22,8 +21,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th" className={prompt.variable}>
-      <body className="font-sans antialiased">
+    <html lang="th">
+      <body className={`${kanit.className} antialiased`}>
         <FirestoreErrorHandler />
         {children}
         <ToastContainer />

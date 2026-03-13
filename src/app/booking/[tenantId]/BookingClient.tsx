@@ -344,10 +344,17 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
           </div>
         </div>
         <button
-          onClick={() => { setCurrentStep(0); setSelectedService(null); setSelectedStaff(null); setSelectedDate(''); setSelectedTime(''); setBookingSuccess(false) }}
+          onClick={() => {
+            setCurrentStep(0)
+            setSelectedService(null)
+            setSelectedStaff(null)
+            setSelectedDate('')
+            setSelectedTime('')
+            setBookingSuccess(false)
+          }}
           style={{ ...styles.button(false), marginTop: 24, maxWidth: 480 }}
         >
-          จองอีกครั้ง
+          กลับหน้าหลัก
         </button>
       </div>
     )
@@ -501,7 +508,11 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
                 <h3 style={styles.serviceName}>ไม่ระบุช่าง (ให้ร้านเลือกให้)</h3>
               </div>
             </div>
-            {filteredStaff.map(staff => (
+            {filteredStaff.map(staff => {
+              const staffServices = services.filter(service =>
+                staff.serviceIds?.includes(service.id)
+              )
+              return (
               <div
                 key={staff.id}
                 onClick={() => setSelectedStaff(staff)}
@@ -514,6 +525,11 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
                 </div>
                 <div>
                   <h3 style={styles.serviceName}>{staff.name}</h3>
+                  {staffServices.length > 0 && (
+                    <p style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                      {staffServices.map(s => s.name).join(' • ')}
+                    </p>
+                  )}
                 </div>
                 {selectedStaff?.id === staff.id && (
                   <div style={{ marginLeft: 'auto' }}>
@@ -523,7 +539,7 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
                   </div>
                 )}
               </div>
-            ))}
+            )})}
           </div>
         )}
 

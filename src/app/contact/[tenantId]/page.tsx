@@ -1,8 +1,8 @@
 import Link from 'next/link'
-import { Prompt } from 'next/font/google'
+import { Kanit } from 'next/font/google'
 import { adminDb } from '@/lib/firebase/admin'
 
-const prompt = Prompt({
+const contactFont = Kanit({
   weight: ['300', '400', '500', '600', '700'],
   subsets: ['thai', 'latin'],
   display: 'swap',
@@ -38,7 +38,7 @@ export default async function TenantContactPage({
 
   if (!tenantDoc.exists) {
     return (
-      <div className={prompt.className} style={{ fontFamily: 'Prompt, sans-serif' }}>
+      <div className={contactFont.className}>
         <div className="min-h-screen bg-[#0F172A] text-white flex flex-col items-center justify-center px-6">
           <p className="text-slate-400">ไม่พบร้านที่ต้องการ</p>
         </div>
@@ -75,7 +75,7 @@ export default async function TenantContactPage({
     : ''
 
   return (
-    <div className={prompt.className} style={{ fontFamily: 'Prompt, sans-serif' }}>
+    <div className={contactFont.className}>
       <div className="min-h-screen bg-[#0F172A] text-white">
         <div className="max-w-lg mx-auto px-5 py-6 pb-16">
           <Link

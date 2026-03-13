@@ -85,6 +85,7 @@ export default function StaffModal({ tenantId, staff, services, tenantDefaults, 
     setErrors(next)
     if (Object.keys(next).length > 0) return
     setLoading(true)
+    let success = false
     try {
       const baseData = {
         name,
@@ -105,12 +106,14 @@ export default function StaffModal({ tenantId, staff, services, tenantDefaults, 
           await updateStaff(tenantId, staffId, { imageUrl })
         }
       }
+      success = true
       onSuccess()
-      onClose()
     } catch (err) {
       console.error(err)
     } finally {
       setLoading(false)
+      // ปิดหน้าต่างไม่ว่าผลจะสำเร็จหรือไม่ ตามที่ผู้ใช้ต้องการ
+      onClose()
     }
   }
 

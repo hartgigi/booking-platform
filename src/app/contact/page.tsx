@@ -10,6 +10,33 @@ const contactFont = Kanit({
   display: 'swap',
 })
 
+const FEATURE_ITEMS = [
+  {
+    icon: '📱',
+    title: 'จองผ่าน LINE 100% (No App Required)',
+    desc: 'ลูกค้าจองง่าย... ไม่ต้องโหลดแอปเพิ่ม',
+    tag: 'สะดวกลูกค้า ถูกใจเจ้าของร้าน (JongMe Contract)',
+  },
+  {
+    icon: '🔔',
+    title: 'แก้ปัญหา No-Show ด้วยระบบเตือนอัจฉริยะ',
+    desc: 'การที่ลูกค้าจองแล้วไม่มาคือความสูญเสีย JongMe มีระบบ Auto-Notification ส่งข้อความเตือนลูกค้าผ่าน LINE ก่อนถึงเวลานัด ช่วยลดการลืมนัดได้มากกว่า 90% และทำให้ร้านบริหารจัดการคิวได้อย่างแม่นยำ',
+    tag: '(JongMe Contract)',
+  },
+  {
+    icon: '💰',
+    title: 'เริ่มต้นฟรี และเติบโตไปพร้อมกัน',
+    desc: '⚙️ ตั้งค่าง่าย ภายใน 5 นาที รองรับ LINE OA ทุกร้าน\n\nเราเข้าใจคนทำธุรกิจ JongMe มีแผนให้ทดลองใช้ฟรีเพื่อให้คุณมั่นใจก่อน และเมื่อธุรกิจคุณขยาย แพ็กเกจพรีเมียมของเราก็เริ่มต้นเพียงหลักร้อยต่อเดือน (เฉลี่ยวันละไม่ถึง 10 บาท) ซึ่งคุ้มค่ากว่าการจ้างแอดมินหนึ่งคนหลายเท่าตัว!',
+    tag: '(JongMe Contract)',
+  },
+  {
+    icon: '⚡',
+    title: 'ลดงานแอดมิน 80%',
+    desc: 'ปล่อยให้ระบบทำงานแทน เบื่อไหมกับการต้องคอยตอบ "กี่โมงว่างคะ?" "ช่างคนนี้ว่างไหม?" JongMe จะโชว์ตารางว่างแบบ Real-time ให้ลูกค้าเลือกเอง ระบบจะจดคิวลงตารางให้อัตโนมัติ คุณแค่เปิดดูตอนเช้าทีเดียวว่าวันนี้มีกี่คิว',
+    tag: '(JongMe Contract)',
+  },
+] as const
+
 const HERO_STAGGER = 120
 const COUNT_DURATION = 1500
 const COUNT_INTERVAL = 50
@@ -59,6 +86,8 @@ export default function ContactPage() {
   const featuresInView = useInView(0.15)
   const [featureVisible, setFeatureVisible] = useState(false)
   const featureSectionRef = useRef<HTMLElement>(null)
+  const featureScrollRef = useRef<HTMLDivElement>(null)
+  const [activeFeatureIndex, setActiveFeatureIndex] = useState(0)
   const [videoPlaying, setVideoPlaying] = useState(false)
 
   useEffect(() => {
@@ -86,6 +115,26 @@ export default function ContactPage() {
     )
     io.observe(el)
     return () => io.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const el = featureScrollRef.current
+    if (!el) return
+    const handleScroll = () => {
+      if (!el) return
+      const { scrollLeft, scrollWidth, clientWidth } = el
+      if (scrollWidth <= clientWidth) {
+        setActiveFeatureIndex(0)
+        return
+      }
+      const maxScroll = scrollWidth - clientWidth
+      const ratio = scrollLeft / maxScroll
+      const index = Math.round(ratio * (FEATURE_ITEMS.length - 1))
+      setActiveFeatureIndex(index)
+    }
+    handleScroll()
+    el.addEventListener('scroll', handleScroll, { passive: true })
+    return () => el.removeEventListener('scroll', handleScroll)
   }, [])
 
   return (
@@ -154,13 +203,11 @@ export default function ContactPage() {
 
         <section id="features" ref={featureSectionRef} className="bg-[#0F172A] pt-6 pb-6 px-0">
           <div className="max-w-6xl mx-auto px-6">
-            <div className="flex gap-4 overflow-x-auto pb-2 -mx-2 px-2 snap-x snap-mandatory">
-              {[
-                { icon: '📱', title: 'จองผ่าน LINE 100% (No App Required)', desc: 'ลูกค้าจองง่าย... ไม่ต้องโหลดแอปเพิ่ม', tag: 'สะดวกลูกค้า ถูกใจเจ้าของร้าน (JongMe Contract)' },
-                { icon: '🔔', title: 'แก้ปัญหา No-Show ด้วยระบบเตือนอัจฉริยะ', desc: 'การที่ลูกค้าจองแล้วไม่มาคือความสูญเสีย JongMe มีระบบ Auto-Notification ส่งข้อความเตือนลูกค้าผ่าน LINE ก่อนถึงเวลานัด ช่วยลดการลืมนัดได้มากกว่า 90% และทำให้ร้านบริหารจัดการคิวได้อย่างแม่นยำ', tag: '(JongMe Contract)' },
-                { icon: '💰', title: 'เริ่มต้นฟรี และเติบโตไปพร้อมกัน', desc: '⚙️ ตั้งค่าง่าย ภายใน 5 นาที รองรับ LINE OA ทุกร้าน\n\nเราเข้าใจคนทำธุรกิจ JongMe มีแผนให้ทดลองใช้ฟรีเพื่อให้คุณมั่นใจก่อน และเมื่อธุรกิจคุณขยาย แพ็กเกจพรีเมียมของเราก็เริ่มต้นเพียงหลักร้อยต่อเดือน (เฉลี่ยวันละไม่ถึง 10 บาท) ซึ่งคุ้มค่ากว่าการจ้างแอดมินหนึ่งคนหลายเท่าตัว!', tag: '(JongMe Contract)' },
-                { icon: '⚡', title: 'ลดงานแอดมิน 80%', desc: 'ปล่อยให้ระบบทำงานแทน เบื่อไหมกับการต้องคอยตอบ "กี่โมงว่างคะ?" "ช่างคนนี้ว่างไหม?" JongMe จะโชว์ตารางว่างแบบ Real-time ให้ลูกค้าเลือกเอง ระบบจะจดคิวลงตารางให้อัตโนมัติ คุณแค่เปิดดูตอนเช้าทีเดียวว่าวันนี้มีกี่คิว', tag: '(JongMe Contract)' },
-              ].map((f, i) => (
+            <div
+              ref={featureScrollRef}
+              className="flex gap-4 overflow-x-auto pb-2 -mx-2 px-2 snap-x snap-mandatory no-scrollbar"
+            >
+              {FEATURE_ITEMS.map((f, i) => (
                 <div
                   key={f.title}
                   className="min-w-[260px] sm:min-w-[280px] lg:min-w-[260px] p-6 rounded-2xl bg-[#1E293B] border border-slate-600/30 hover:border-[#0D9488]/40 hover:shadow-xl hover:shadow-[#0D9488]/5 hover:-translate-y-1 transition-all duration-500 snap-center"
@@ -179,6 +226,16 @@ export default function ContactPage() {
                     <p className="text-slate-500 text-xs mt-2 italic">{f.tag}</p>
                   )}
                 </div>
+              ))}
+            </div>
+            <div className="flex justify-center gap-1.5 mt-3">
+              {FEATURE_ITEMS.map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === activeFeatureIndex ? 'w-4 bg-teal-400' : 'w-1.5 bg-slate-600/50'
+                  }`}
+                />
               ))}
             </div>
           </div>
@@ -240,7 +297,7 @@ export default function ContactPage() {
 
         <section id="pricing" className="py-24 px-4 bg-[#0F172A]">
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-3xl sm:text-4xl font-bold text-center mb-2">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-2 leading-tight">
               ราคาที่คุ้มค่า ไม่มีค่าใช้จ่ายซ่อนเร้น
             </h2>
             <p className="text-slate-400 text-center mb-6">เริ่มต้นใช้งานได้ทันที ไม่ต้องใส่บัตรเครดิต</p>
@@ -262,7 +319,7 @@ export default function ContactPage() {
               ].map((p) => (
                 <div
                   key={p.id}
-                  className={`relative p-6 rounded-2xl border transition-all duration-300 ${
+                  className={`relative p-6 rounded-2xl border transition-all duration-300 flex flex-col ${
                     p.highlight
                       ? 'bg-[#1E293B] border-[#0D9488] shadow-lg shadow-[#0D9488]/20 lg:scale-105 z-10 hover:-translate-y-2 hover:shadow-xl hover:shadow-[#0D9488]/30'
                       : 'bg-[#1E293B] border-slate-600/30 hover:border-slate-500/50 hover:-translate-y-2 hover:shadow-xl hover:shadow-[#0D9488]/10'
@@ -286,7 +343,7 @@ export default function ContactPage() {
                   <button
                     type="button"
                     onClick={() => router.push(`/admin/register?package=${encodeURIComponent(p.id)}`)}
-                    className="mt-2 w-full rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white text-sm font-semibold py-2.5 transition-colors"
+                    className="mt-auto w-full rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white text-sm font-semibold py-2.5 transition-colors"
                   >
                     เลือกแพ็คเกจนี้
                   </button>
@@ -328,7 +385,14 @@ export default function ContactPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-lg">💬</span>
-                  <p className="text-slate-300">@jongme (LINE Official Account)</p>
+                  <a
+                    href="https://lin.ee/lTvJWLO"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-slate-300 hover:text-teal-400 underline-offset-2 hover:underline"
+                  >
+                    @jongme (LINE Official Account)
+                  </a>
                 </div>
               </div>
             </div>

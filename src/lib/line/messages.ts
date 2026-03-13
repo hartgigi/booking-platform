@@ -505,16 +505,11 @@ export function buildBookingConfirmedMessage(
       contents: [
         {
           type: "button",
-          action: { type: "uri", label: "ตรวจสอบสถานะ", uri: `${base}/booking/${booking.tenantId}/status` },
-          style: "primary",
-        },
-        {
-          type: "button",
           action: { type: "postback", label: "เลื่อนนัด", data: `action=reschedule&bookingId=${booking.id}` },
         },
         {
           type: "button",
-          action: { type: "postback", label: "ยกเลิกการจอง", data: `action=user_cancel&bookingId=${booking.id}` },
+          action: { type: "postback", label: "ยกเลิกนัด", data: `action=cancel_booking&bookingId=${booking.id}` },
           style: "secondary",
         },
       ],
@@ -942,6 +937,54 @@ export function buildLineDatePickerFlex(dates: string[]): FlexContainer {
   };
 }
 
+export function buildLineRescheduleDatePickerFlex(
+  bookingId: string,
+  dates: string[]
+): FlexContainer {
+  const items = dates.slice(0, 10);
+  return {
+    type: "bubble",
+    size: "kilo",
+    header: {
+      type: "box",
+      layout: "vertical",
+      backgroundColor: "#0D9488",
+      paddingAll: "lg",
+      contents: [
+        {
+          type: "text",
+          text: "📅 เลือกวันใหม่",
+          weight: "bold",
+          size: "lg",
+          color: "#FFFFFF",
+          wrap: true,
+        },
+      ],
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      spacing: "sm",
+      paddingAll: "md",
+      contents: items.map((date) => {
+        const label = formatThaiDate(date);
+        return {
+          type: "button",
+          style: "secondary",
+          height: "sm",
+          margin: "sm",
+          action: {
+            type: "postback",
+            label,
+            data: `action=reschedule_select_date&bookingId=${bookingId}&date=${date}`,
+            displayText: `📅 เลื่อนนัดเป็นวัน: ${label}`,
+          },
+        } as FlexComponent;
+      }),
+    },
+  };
+}
+
 export function buildLineServicesFlex(
   date: string,
   services: {
@@ -1283,6 +1326,81 @@ export function buildLineTimeSlotsFlex(
   };
 }
 
+export function buildLineRescheduleTimeSlotsFlex(
+  bookingId: string,
+  date: string,
+  slots: { time: string; isAvailable: boolean }[]
+): FlexContainer {
+  const rows: FlexComponent[] = [];
+  const available = slots.filter((s) => s.isAvailable);
+
+  for (let i = 0; i < available.length; i += 2) {
+    const rowSlots = available.slice(i, i + 2);
+    const contents: FlexComponent[] = rowSlots.map((slot) => ({
+      type: "button",
+      style: "primary",
+      color: "#0D9488",
+      height: "sm",
+      flex: 1,
+      action: {
+        type: "postback",
+        label: slot.time,
+        data: `action=reschedule_select_time&bookingId=${bookingId}&date=${date}&time=${slot.time}`,
+        displayText: `🕐 เลื่อนนัดเป็นเวลา: ${slot.time}`,
+      },
+    }));
+    if (rowSlots.length === 1) {
+      contents.push({ type: "filler", flex: 1 } as any);
+    }
+    rows.push({
+      type: "box",
+      layout: "horizontal",
+      spacing: "sm",
+      margin: "sm",
+      contents,
+    });
+  }
+
+  return {
+    type: "bubble",
+    size: "mega",
+    header: {
+      type: "box",
+      layout: "vertical",
+      backgroundColor: "#0D9488",
+      paddingAll: "lg",
+      contents: [
+        {
+          type: "text",
+          text: "🕐 เลือกเวลาใหม่",
+          weight: "bold",
+          size: "lg",
+          color: "#FFFFFF",
+          wrap: true,
+        },
+      ],
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      spacing: "sm",
+      paddingAll: "md",
+      contents: rows.length
+        ? rows
+        : ([
+            {
+              type: "text",
+              text: "ไม่มีเวลาว่างในวันนี้",
+              size: "sm",
+              color: "#666666",
+              wrap: true,
+              align: "center",
+            },
+          ] as FlexComponent[]),
+    },
+  };
+}
+
 export function buildLineBookingSummaryFlex(params: {
   date: string;
   serviceId: string;
@@ -1380,7 +1498,13 @@ export function buildLineCancelConfirmFlex(bookingId: string): FlexContainer {
       type: "box",
       layout: "vertical",
       contents: [
-        { type: "text", text: "แน่ใจหรือไม่ที่จะยกเลิกการจอง?", weight: "bold", size: "md", wrap: true },
+        {
+          type: "text",
+          text: "แน่ใจหรือไม่ที่จะยกเลิกนัด?\n\nกรณียกเลิกนัด คุณจะไม่ได้รับเงินมัดจำคืน",
+          weight: "bold",
+          size: "md",
+          wrap: true,
+        },
       ],
       paddingAll: "lg",
     },
@@ -1388,7 +1512,15 @@ export function buildLineCancelConfirmFlex(bookingId: string): FlexContainer {
       type: "box",
       layout: "horizontal",
       contents: [
-        { type: "button", action: { type: "postback", label: "ยกเลิกการจอง", data: `action=cancel_booking_confirm&bookingId=${bookingId}` }, style: "secondary" },
+        {
+          type: "button",
+          action: {
+            type: "postback",
+            label: "ยืนยันยกเลิกนัด",
+            data: `action=cancel_booking_confirm&bookingId=${bookingId}`,
+          },
+          style: "secondary",
+        },
         { type: "button", action: { type: "postback", label: "กลับ", data: "action=my_bookings" } },
       ],
       paddingAll: "md",
