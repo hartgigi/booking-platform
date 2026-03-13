@@ -129,13 +129,14 @@ const styles = {
     transition: 'all 0.2s'
   }),
   summaryCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRadius: '16px',
-    padding: '20px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    boxShadow: '0 10px 25px rgba(15,23,42,0.15)',
+    border: '1px solid #E5E7EB',
     width: '100%',
     maxWidth: 480,
     margin: '0 auto',
+    overflow: 'hidden',
   },
   summaryRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' },
   summaryLabel: { color: '#9CA3AF', fontSize: '14px' },
@@ -322,25 +323,42 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
         <h2 style={{ fontSize: 22, fontWeight: '700', color: '#111827', marginBottom: 8 }}>จองสำเร็จ!</h2>
         <p style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 24 }}>การจองของคุณได้รับการยืนยันแล้ว</p>
         <div style={styles.summaryCard}>
-          <div style={styles.summaryRow}>
-            <span style={styles.summaryLabel}>บริการ</span>
-            <span style={styles.summaryValue}>{selectedService?.name}</span>
+          <div
+            style={{
+              background: 'linear-gradient(135deg,#22C55E,#16A34A)',
+              padding: '16px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              color: '#FFFFFF',
+            }}
+          >
+            <div>
+              <p style={{ fontSize: 13, opacity: 0.9, marginBottom: 4 }}>จองสำเร็จสำหรับบริการ</p>
+              <p style={{ fontSize: 18, fontWeight: 700 }}>
+                {selectedService?.name || 'บริการ'}
+              </p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: 12, opacity: 0.9, marginBottom: 2 }}>ยอดประมาณ</p>
+              <p style={{ fontSize: 20, fontWeight: 800 }}>
+                ฿{selectedService?.price.toLocaleString()}
+              </p>
+            </div>
           </div>
-          <div style={styles.summaryRow}>
-            <span style={styles.summaryLabel}>ช่าง</span>
-            <span style={styles.summaryValue}>{selectedStaff?.name || 'ไม่ระบุ'}</span>
-          </div>
-          <div style={styles.summaryRow}>
-            <span style={styles.summaryLabel}>วันที่</span>
-            <span style={styles.summaryValue}>{selectedDate}</span>
-          </div>
-          <div style={styles.summaryRow}>
-            <span style={styles.summaryLabel}>เวลา</span>
-            <span style={styles.summaryValue}>{selectedTime} น.</span>
-          </div>
-          <div style={{ ...styles.summaryRow, borderTop: '1px solid #E5E7EB', paddingTop: 12, marginTop: 4 }}>
-            <span style={styles.summaryLabel}>ราคา</span>
-            <span style={{ ...styles.summaryValue, fontSize: 18, color: '#0D9488' }}>฿{selectedService?.price}</span>
+          <div style={{ padding: '16px 20px 20px' }}>
+            <div style={styles.summaryRow}>
+              <span style={styles.summaryLabel}>ช่าง</span>
+              <span style={styles.summaryValue}>{selectedStaff?.name || 'ไม่ระบุ'}</span>
+            </div>
+            <div style={styles.summaryRow}>
+              <span style={styles.summaryLabel}>วันที่</span>
+              <span style={styles.summaryValue}>{selectedDate}</span>
+            </div>
+            <div style={styles.summaryRow}>
+              <span style={styles.summaryLabel}>เวลา</span>
+              <span style={styles.summaryValue}>{selectedTime} น.</span>
+            </div>
           </div>
         </div>
         <button
@@ -588,41 +606,72 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
           <div>
             <p style={styles.subtitle}>ตรวจสอบข้อมูลการจอง</p>
             <div style={styles.summaryCard}>
-              <div style={styles.summaryRow}>
-                <span style={styles.summaryLabel}>บริการ</span>
-                <span style={styles.summaryValue}>{selectedService?.name}</span>
-              </div>
-              <div style={styles.summaryRow}>
-                <span style={styles.summaryLabel}>ช่าง</span>
-                <span style={styles.summaryValue}>{selectedStaff?.name || 'ไม่ระบุ'}</span>
-              </div>
-              <div style={styles.summaryRow}>
-                <span style={styles.summaryLabel}>วันที่</span>
-                <span style={styles.summaryValue}>{selectedDate}</span>
-              </div>
-              <div style={styles.summaryRow}>
-                <span style={styles.summaryLabel}>เวลา</span>
-                <span style={styles.summaryValue}>{selectedTime} น.</span>
-              </div>
-              <div style={styles.summaryRow}>
-                <span style={styles.summaryLabel}>ระยะเวลา</span>
-                <span style={styles.summaryValue}>{selectedService?.durationMinutes} นาที</span>
-              </div>
-              <div style={{ ...styles.summaryRow, borderTop: '1px solid #E5E7EB', paddingTop: 12, marginTop: 4 }}>
-                <span style={styles.summaryLabel}>ราคาบริการ</span>
-                <span style={{ ...styles.summaryValue, fontSize: 18, color: '#0D9488' }}>฿{selectedService?.price.toLocaleString()}</span>
-              </div>
-              {selectedService && selectedService.depositAmount > 0 && (
-                <div style={{ marginTop: 8, padding: 12, borderRadius: 12, backgroundColor: '#FFF7ED' }}>
-                  <div style={styles.summaryRow}>
-                    <span style={{ ...styles.summaryLabel, color: '#EA580C' }}>ค่ามัดจำ</span>
-                    <span style={{ ...styles.summaryValue, color: '#EA580C' }}>฿{selectedService.depositAmount.toLocaleString()}</span>
-                  </div>
-                  <p style={{ fontSize: 12, color: '#FDBA74', marginTop: 4 }}>
-                    ชำระค่ามัดจำก่อนเพื่อยืนยันการจอง ส่วนที่เหลือชำระที่ร้าน
+              <div
+                style={{
+                  background: 'linear-gradient(135deg,#0D9488,#14B8A6)',
+                  padding: '16px 20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  color: '#FFFFFF',
+                }}
+              >
+                <div>
+                  <p style={{ fontSize: 13, opacity: 0.85, marginBottom: 4 }}>บริการที่คุณเลือก</p>
+                  <p style={{ fontSize: 18, fontWeight: 700 }}>
+                    {selectedService?.name || 'ยังไม่ได้เลือกบริการ'}
                   </p>
                 </div>
-              )}
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontSize: 12, opacity: 0.9, marginBottom: 2 }}>ยอดชำระที่ร้าน</p>
+                  <p style={{ fontSize: 20, fontWeight: 800 }}>
+                    ฿{selectedService?.price.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ padding: '16px 20px 20px' }}>
+                <div style={styles.summaryRow}>
+                  <span style={styles.summaryLabel}>ช่าง</span>
+                  <span style={styles.summaryValue}>{selectedStaff?.name || 'ไม่ระบุ'}</span>
+                </div>
+                <div style={styles.summaryRow}>
+                  <span style={styles.summaryLabel}>วันที่</span>
+                  <span style={styles.summaryValue}>{selectedDate}</span>
+                </div>
+                <div style={styles.summaryRow}>
+                  <span style={styles.summaryLabel}>เวลา</span>
+                  <span style={styles.summaryValue}>{selectedTime} น.</span>
+                </div>
+                <div style={styles.summaryRow}>
+                  <span style={styles.summaryLabel}>ระยะเวลา</span>
+                  <span style={styles.summaryValue}>
+                    {selectedService?.durationMinutes} นาที
+                  </span>
+                </div>
+
+                {selectedService && selectedService.depositAmount > 0 && (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      padding: 12,
+                      borderRadius: 12,
+                      backgroundColor: '#FFF7ED',
+                      border: '1px dashed #FDBA74',
+                    }}
+                  >
+                    <div style={styles.summaryRow}>
+                      <span style={{ ...styles.summaryLabel, color: '#EA580C' }}>ค่ามัดจำ</span>
+                      <span style={{ ...styles.summaryValue, color: '#EA580C' }}>
+                        ฿{selectedService.depositAmount.toLocaleString()}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: 12, color: '#92400E', marginTop: 4 }}>
+                      ชำระค่ามัดจำก่อนเพื่อยืนยันการจอง ส่วนที่เหลือชำระที่ร้าน
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {liffProfile && (

@@ -505,12 +505,23 @@ export function buildBookingConfirmedMessage(
       contents: [
         {
           type: "button",
-          action: { type: "postback", label: "เลื่อนนัด", data: `action=reschedule&bookingId=${booking.id}` },
+          style: "primary",
+          color: "#0D9488",
+          action: {
+            type: "postback",
+            label: "เลื่อนนัด",
+            data: `action=reschedule&bookingId=${booking.id}`,
+          },
         },
         {
           type: "button",
-          action: { type: "postback", label: "ยกเลิกนัด", data: `action=cancel_booking&bookingId=${booking.id}` },
           style: "secondary",
+          color: "#F97373",
+          action: {
+            type: "postback",
+            label: "ยกเลิกนัด",
+            data: `action=cancel_booking&bookingId=${booking.id}`,
+          },
         },
       ],
       paddingAll: "md",
