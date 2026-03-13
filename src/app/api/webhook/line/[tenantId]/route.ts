@@ -15,6 +15,7 @@ import {
   buildBookingCancelledMessage,
   buildLineRescheduleDatePickerFlex,
   buildLineRescheduleTimeSlotsFlex,
+  buildBookingConfirmedMessage,
 } from "@/lib/line/messages";
 import {
   notifyAdminNewBooking,
