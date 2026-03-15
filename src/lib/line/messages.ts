@@ -512,9 +512,9 @@ export function buildBookingConfirmedMessage(
           height: "sm",
           flex: 1,
           action: {
-            type: "postback",
+            type: "uri",
             label: "เลื่อนนัด",
-            data: `action=reschedule&bookingId=${booking.id}`,
+            uri: `${base}/booking/${booking.tenantId}`,
           },
         },
         {
