@@ -10,6 +10,8 @@ interface BookingSummary {
   id: string
   serviceName: string
   staffName: string
+  serviceId: string
+  staffId: string
   date: string
   startTime: string
   tenantId: string
@@ -232,6 +234,8 @@ export default function ReschedulePage({ params }: ReschedulePageProps) {
           id: b.id,
           serviceName: b.serviceName,
           staffName: b.staffName,
+          serviceId: b.serviceId,
+          staffId: b.staffId,
           date: b.date,
           startTime: b.startTime,
           tenantId: b.tenantId,
@@ -260,7 +264,9 @@ export default function ReschedulePage({ params }: ReschedulePageProps) {
         const res = await fetch(
           `/api/booking/${booking.tenantId}/timeslots?date=${encodeURIComponent(
             selectedDate,
-          )}&staffId=${encodeURIComponent('any')}&serviceId=${encodeURIComponent('')}`,
+          )}&staffId=${encodeURIComponent(
+            booking.staffId || 'any',
+          )}&serviceId=${encodeURIComponent(booking.serviceId)}`,
         )
         const data = await res.json()
         if (cancelled) return
