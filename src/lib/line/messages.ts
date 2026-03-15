@@ -514,7 +514,7 @@ export function buildBookingConfirmedMessage(
           action: {
             type: "uri",
             label: "เลื่อนนัด",
-            uri: `${base}/booking/${booking.tenantId}`,
+            uri: `${base}/booking/${booking.tenantId}/reschedule/${booking.id}`,
           },
         },
         {
