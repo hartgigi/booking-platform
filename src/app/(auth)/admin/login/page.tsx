@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,6 +26,8 @@ function LoginForm() {
   const router = useRouter();
   const registered = searchParams.get("registered") === "true";
   const tenantIdFromQuery = searchParams.get("tenantId") || "";
+  const fromLine = searchParams.get("from") === "line";
+  const autoLineLoginDone = useRef(false);
   const {
     control,
     handleSubmit,
@@ -35,6 +37,64 @@ function LoginForm() {
     defaultValues: { email: "", password: "" },
   });
 
+  // หลังกลับจาก LINE login มาที่ /start แล้วถูกส่งมาหน้า login — ถ้า LIFF login แล้วให้เข้าสู่ระบบด้วย LINE อัตโนมัติ
+  useEffect(() => {
+    if (!fromLine || autoLineLoginDone.current || typeof window === "undefined")
+      return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { default: liff } = await import("@line/liff");
+        if (!(liff as any).isInitialized?.()) {
+          await liff.init({ liffId: "2009324540-weVbZ1eR" });
+        }
+        if (cancelled || !liff.isLoggedIn()) return;
+        autoLineLoginDone.current = true;
+        const profile = await liff.getProfile();
+        if (!profile.userId || cancelled) return;
+        let tenantId = tenantIdFromQuery;
+        if (!tenantId) {
+          const byLineRes = await fetch(
+            `/api/tenants/by-line?lineUserId=${encodeURIComponent(profile.userId)}`
+          );
+          const byLineData = await byLineRes.json();
+          if (byLineData.exists && byLineData.tenantId) tenantId = byLineData.tenantId;
+        }
+        if (!tenantId || cancelled) return;
+        const res = await fetch("/api/auth/line-admin-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lineUserId: profile.userId, tenantId }),
+        });
+        if (!res.ok || cancelled) {
+          const data = await res.json().catch(() => ({}));
+          setError(data?.error || "ไม่สามารถเข้าสู่ระบบด้วย LINE ได้");
+          return;
+        }
+        const data = await res.json();
+        const customToken = data.customToken as string;
+        const userCredential = await signInWithAdminCustomToken(customToken);
+        const idToken = await userCredential.user.getIdToken();
+        window.localStorage.setItem("firebaseToken", idToken);
+        await fetch("/api/auth/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken }),
+          cache: "no-store",
+        });
+        router.push("/admin/dashboard");
+      } catch (e) {
+        if (!cancelled) {
+          console.error("Auto LINE login error:", e);
+          setError("เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย LINE");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fromLine, tenantIdFromQuery, router]);
+
   async function handleLineLogin() {
     setError(null);
     try {
@@ -43,7 +103,8 @@ function LoginForm() {
         await liff.init({ liffId: "2009324540-weVbZ1eR" });
       }
       if (!liff.isLoggedIn()) {
-        liff.login({ redirectUri: window.location.href });
+        const { getLiffLoginRedirectUri } = await import("@/lib/line/liff");
+        liff.login({ redirectUri: getLiffLoginRedirectUri() });
         return;
       }
       const profile = await liff.getProfile();

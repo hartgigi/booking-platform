@@ -1,5 +1,14 @@
 import liff from "@line/liff";
 
+/** โดเมนหลักของแอป — ใช้เป็น redirect URI ตอน LINE login (ต้องตรงกับ Endpoint URL ใน LINE LIFF) */
+const APP_ORIGIN =
+  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_APP_URL) ||
+  "https://jongme.com";
+
+export function getLiffLoginRedirectUri(): string {
+  return `${APP_ORIGIN.replace(/\/$/, "")}/start`;
+}
+
 let initDone = false;
 
 export async function initializeLiff(liffId: string): Promise<void> {

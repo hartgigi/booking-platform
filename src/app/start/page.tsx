@@ -21,8 +21,8 @@ function StartPageClient() {
         }
 
         if (!liff.isLoggedIn()) {
-          // กลับมาหน้าเดิมหลังล็อกอิน
-          liff.login({ redirectUri: window.location.href });
+          const { getLiffLoginRedirectUri } = await import("@/lib/line/liff");
+          liff.login({ redirectUri: getLiffLoginRedirectUri() });
           return;
         }
 
