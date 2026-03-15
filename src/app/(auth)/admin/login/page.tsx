@@ -38,10 +38,6 @@ function LoginForm() {
   async function handleLineLogin() {
     setError(null);
     try {
-      if (!tenantIdFromQuery) {
-        setError("ไม่พบข้อมูลร้านจาก LINE กรุณาเริ่มจากปุ่ม \"เริ่มใช้งาน\" ในเมนู LINE อีกครั้ง");
-        return;
-      }
       const { default: liff } = await import("@line/liff");
       if (!(liff as any).isInitialized?.()) {
         await liff.init({ liffId: "2009324540-weVbZ1eR" });
@@ -55,19 +51,35 @@ function LoginForm() {
         setError("ไม่สามารถอ่านข้อมูล LINE ได้ กรุณาลองใหม่");
         return;
       }
+      // ถ้า URL ไม่มี tenantId (เช่น เปิดจาก bookmark หรือ redirect หลุด) ให้ดึงจาก by-line
+      let tenantId = tenantIdFromQuery;
+      if (!tenantId) {
+        const byLineRes = await fetch(
+          `/api/tenants/by-line?lineUserId=${encodeURIComponent(profile.userId)}`
+        );
+        const byLineData = await byLineRes.json();
+        if (byLineData.exists && byLineData.tenantId) {
+          tenantId = byLineData.tenantId;
+        }
+      }
+      if (!tenantId) {
+        setError(
+          "ไม่พบร้านที่สมัครกับบัญชี LINE นี้ กรุณาเริ่มจากปุ่ม \"เริ่มต้นใช้งาน\" ในเมนู LINE หรือสมัครแพ็กเกจก่อน"
+        );
+        return;
+      }
       const res = await fetch("/api/auth/line-admin-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           lineUserId: profile.userId,
-          tenantId: tenantIdFromQuery,
+          tenantId,
         }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError(
-          data?.error ||
-            "ไม่สามารถเข้าสู่ระบบด้วย LINE ได้ กรุณาลองใหม่"
+          data?.error || "ไม่สามารถเข้าสู่ระบบด้วย LINE ได้ กรุณาลองใหม่"
         );
         return;
       }

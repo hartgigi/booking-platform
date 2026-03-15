@@ -9,21 +9,24 @@ export async function POST(request: NextRequest) {
 
     if (!lineUserId || !tenantId) {
       return NextResponse.json(
-        { error: "lineUserId and tenantId are required" },
+        { error: "ข้อมูลไม่ครบ กรุณากดจากปุ่ม \"เริ่มต้นใช้งาน\" ใน LINE" },
         { status: 400 }
       );
     }
 
     const tenantDoc = await adminDb.collection("tenants").doc(tenantId).get();
     if (!tenantDoc.exists) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "ไม่พบร้านในระบบ กรุณาเริ่มจากปุ่ม \"เริ่มต้นใช้งาน\" ใน LINE อีกครั้ง" },
+        { status: 404 }
+      );
     }
     const tenant = tenantDoc.data() || {};
     const adminLineUserId = String(tenant.adminLineUserId ?? "").trim();
 
     if (!adminLineUserId || adminLineUserId !== lineUserId) {
       return NextResponse.json(
-        { error: "LINE user is not the owner of this tenant" },
+        { error: "บัญชี LINE นี้ยังไม่ได้ผูกกับร้านนี้ กรุณาผูก LINE ในตั้งค่าร้านหรือติดต่อแอดมิน" },
         { status: 403 }
       );
     }
@@ -78,7 +81,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ customToken });
   } catch (err) {
     console.error("line-admin-login error:", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "เกิดข้อผิดพลาดในระบบ กรุณาลองใหม่ภายหลัง" },
+      { status: 500 }
+    );
   }
 }
 
