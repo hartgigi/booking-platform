@@ -20,9 +20,10 @@ function StartPageClient() {
           await liff.init({ liffId: "2009324540-weVbZ1eR" });
         }
 
+        // ถ้ายังไม่ล็อกอิน LIFF (เช่น เปิดจากเบราว์เซอร์นอก LINE) ไม่เรียก liff.login() ที่อาจทำให้ได้ 400
+        // ส่งไปหน้ารายการแพ็กเกจแทน ตาม flow: ยังไม่สมัคร → ให้มีรายการ Package ให้เลือก
         if (!liff.isLoggedIn()) {
-          const { getLiffLoginRedirectUri } = await import("@/lib/line/liff");
-          liff.login({ redirectUri: getLiffLoginRedirectUri() });
+          router.replace("/contact?from=start");
           return;
         }
 
