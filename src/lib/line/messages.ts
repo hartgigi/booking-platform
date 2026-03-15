@@ -1527,19 +1527,23 @@ export function buildLineCancelConfirmFlex(bookingId: string): FlexContainer {
     footer: {
       type: "box",
       layout: "horizontal",
+      spacing: "md",
+      paddingAll: "md",
       contents: [
+        { type: "filler", flex: 1 } as any,
         {
           type: "button",
+          style: "secondary",
+          color: "#EF4444",
+          height: "sm",
+          flex: 1,
           action: {
             type: "postback",
             label: "ยืนยันยกเลิกนัด",
             data: `action=cancel_booking_confirm&bookingId=${bookingId}`,
           },
-          style: "secondary",
         },
-        { type: "button", action: { type: "postback", label: "กลับ", data: "action=my_bookings" } },
       ],
-      paddingAll: "md",
     },
   };
 }
