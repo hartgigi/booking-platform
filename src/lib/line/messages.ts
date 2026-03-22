@@ -8,6 +8,59 @@ function getBookingBaseUrl(): string {
   return "https://example.com";
 }
 
+const DEFAULT_LIFF_ID_FOR_LINKS = "2009324540-weVbZ1eR";
+
+function getLiffIdForCustomerLinks(): string {
+  return (typeof process !== "undefined" && process.env.NEXT_PUBLIC_LIFF_ID) || DEFAULT_LIFF_ID_FOR_LINKS;
+}
+
+/** ลิงก์เลื่อนนัดสำหรับลูกค้า: เปิดใน LIFF (ใน LINE) แล้ว redirect ไปหน้าเลือกวัน/เวลา */
+export function getCustomerRescheduleUri(tenantId: string, bookingId: string): string {
+  const liffId = getLiffIdForCustomerLinks();
+  const q = new URLSearchParams({
+    tenantId,
+    rescheduleBookingId: bookingId,
+  });
+  return `https://liff.line.me/${liffId}?${q.toString()}`;
+}
+
+export function buildRescheduleWebEntryFlex(tenantId: string, bookingId: string): FlexContainer {
+  const uri = getCustomerRescheduleUri(tenantId, bookingId);
+  return {
+    type: "bubble",
+    size: "kilo",
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        { type: "text", text: "เลื่อนนัด", weight: "bold", size: "lg", wrap: true },
+        {
+          type: "text",
+          text: "แตะปุ่มด้านล่างเพื่อเลือกวันและเวลาใหม่บนหน้าเว็บ (จะแสดงวัน/เวลาเดิมเป็นค่าเริ่มต้น)",
+          size: "sm",
+          wrap: true,
+          margin: "md",
+          color: "#666666",
+        },
+      ],
+      paddingAll: "lg",
+    },
+    footer: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "button",
+          style: "primary",
+          color: "#0D9488",
+          action: { type: "uri", label: "เปิดหน้าเลื่อนนัด", uri },
+        },
+      ],
+      paddingAll: "md",
+    },
+  };
+}
+
 export function buildWelcomeMessage(tenantName: string): FlexContainer {
   return {
     type: "bubble",
@@ -474,7 +527,7 @@ export function buildBookingConfirmedMessage(
   booking: Booking,
   tenantName: string
 ): FlexContainer {
-  const base = getBookingBaseUrl();
+  const rescheduleUri = getCustomerRescheduleUri(booking.tenantId, booking.id);
   const dateFormatted = formatThaiDate(booking.date);
   return {
     type: "bubble",
@@ -514,7 +567,7 @@ export function buildBookingConfirmedMessage(
           action: {
             type: "uri",
             label: "เลื่อนนัด",
-            uri: `${base}/booking/${booking.tenantId}/reschedule/${booking.id}`,
+            uri: rescheduleUri,
           },
         },
         {
@@ -588,7 +641,7 @@ export function buildRescheduleMessage(
   booking: Booking,
   tenantName: string
 ): FlexContainer {
-  const base = getBookingBaseUrl();
+  const rescheduleUri = getCustomerRescheduleUri(booking.tenantId, booking.id);
   const dateFormatted = formatThaiDate(booking.date);
   return {
     type: "bubble",
@@ -621,7 +674,7 @@ export function buildRescheduleMessage(
           action: {
             type: "uri",
             label: "เลือกวันเวลาใหม่",
-            uri: `${base}/booking/${booking.tenantId}/reschedule/${booking.id}`,
+            uri: rescheduleUri,
           },
           style: "primary",
         },

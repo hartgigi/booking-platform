@@ -9,12 +9,18 @@ function BookingRedirectInner() {
 
   useEffect(() => {
     let tenantId = searchParams.get('tenantId')
-    if (!tenantId) {
+    let rescheduleBookingId = searchParams.get('rescheduleBookingId')
+    if (!tenantId || !rescheduleBookingId) {
       const liffState = searchParams.get('liff.state')
       if (liffState) {
         const liffParams = new URLSearchParams(liffState.replace(/^\?/, ''))
-        tenantId = liffParams.get('tenantId')
+        tenantId = tenantId || liffParams.get('tenantId')
+        rescheduleBookingId = rescheduleBookingId || liffParams.get('rescheduleBookingId')
       }
+    }
+    if (tenantId && rescheduleBookingId) {
+      router.replace(`/booking/${tenantId}/reschedule/${rescheduleBookingId}`)
+      return
     }
     if (tenantId) {
       router.replace('/booking/' + tenantId)

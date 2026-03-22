@@ -16,6 +16,7 @@ import {
   buildLineRescheduleDatePickerFlex,
   buildLineRescheduleTimeSlotsFlex,
   buildBookingConfirmedMessage,
+  buildRescheduleWebEntryFlex,
 } from "@/lib/line/messages";
 import {
   notifyAdminNewBooking,
@@ -793,17 +794,9 @@ async function handlePostback(
       ]);
       return;
     }
-    const openDays = tenant.openDays ?? [1, 2, 3, 4, 5, 6];
-    const dates = getNext7OpenDates(openDays);
-    if (!dates.length) {
-      await sendLineReply(event.replyToken, [
-        { type: "text", text: "ไม่มีวันว่างใน 2 สัปดาห์ถัดไป" },
-      ]);
-      return;
-    }
-    const flex = buildLineRescheduleDatePickerFlex(bookingId, dates);
+    const flex = buildRescheduleWebEntryFlex(tenantId, bookingId);
     await sendLineReply(event.replyToken, [
-      { type: "flex", altText: "เลือกวันใหม่", contents: flex },
+      { type: "flex", altText: "เลื่อนนัด — เปิดหน้าเว็บ", contents: flex },
     ]);
     return;
   }
@@ -1687,6 +1680,37 @@ async function handlePostback(
     } catch {
       await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่สามารถยกเลิกได้" }]);
     }
+    return;
+  }
+
+  if (data.startsWith("reschedule:") && !params.action) {
+    const bookingId = data.replace("reschedule:", "").trim();
+    if (!bookingId) return;
+    const bookingRef = adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("bookings")
+      .doc(bookingId);
+    const snap = await bookingRef.get();
+    if (!snap.exists) {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่พบการจอง" }]);
+      return;
+    }
+    const rb = snap.data() as Booking;
+    if (rb.tenantId !== tenantId || rb.customerLineId !== lineUserId) {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่สามารถเลื่อนนัดนี้ได้" }]);
+      return;
+    }
+    if (rb.status !== "open" && rb.status !== "confirmed") {
+      await sendLineReply(event.replyToken, [
+        { type: "text", text: "นัดนี้ไม่สามารถเลื่อนได้ (สถานะไม่ใช่กำลังจะมาถึง)" },
+      ]);
+      return;
+    }
+    const flex = buildRescheduleWebEntryFlex(tenantId, bookingId);
+    await sendLineReply(event.replyToken, [
+      { type: "flex", altText: "เลื่อนนัด — เปิดหน้าเว็บ", contents: flex },
+    ]);
     return;
   }
 

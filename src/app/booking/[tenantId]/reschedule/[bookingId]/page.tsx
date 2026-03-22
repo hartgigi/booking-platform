@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
+
+const RESCHEDULE_LIFF_ID = process.env.NEXT_PUBLIC_LIFF_ID || '2009324540-weVbZ1eR'
 
 interface ReschedulePageProps {
   params: { tenantId: string; bookingId: string }
@@ -165,16 +167,19 @@ export default function ReschedulePage({ params }: ReschedulePageProps) {
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [lineUserId, setLineUserId] = useState<string | null>(null)
+  const datetimeSectionRef = useRef<HTMLDivElement>(null)
 
-  const getNextDates = useCallback(() => {
-    const dates: { dateStr: string; dayName: string; dayNum: number; monthName: string }[] = []
+  /** รวมวันที่จองเดิมกับช่วงวันถัดจากวันนี้ เพื่อให้เลือกเลื่อนได้แม้นัดไม่อยู่ใน 7 วันแรก */
+  const buildRescheduleDateChips = useCallback((bookingDate: string) => {
     const dayNames = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
     const monthNames = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
-    const today = new Date()
-    for (let i = 0; i < 14 && dates.length < 7; i++) {
-      const d = new Date(today)
-      d.setDate(d.getDate() + i)
+    const seen = new Set<string>()
+    const dates: { dateStr: string; dayName: string; dayNum: number; monthName: string }[] = []
+
+    const pushDate = (d: Date) => {
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      if (seen.has(dateStr)) return
+      seen.add(dateStr)
       dates.push({
         dateStr,
         dayName: dayNames[d.getDay()],
@@ -182,6 +187,22 @@ export default function ReschedulePage({ params }: ReschedulePageProps) {
         monthName: monthNames[d.getMonth()],
       })
     }
+
+    if (bookingDate && /^\d{4}-\d{2}-\d{2}$/.test(bookingDate)) {
+      const [y, m, day] = bookingDate.split('-').map(Number)
+      const bd = new Date(y, m - 1, day)
+      if (!Number.isNaN(bd.getTime())) pushDate(bd)
+    }
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(today)
+      d.setDate(d.getDate() + i)
+      pushDate(d)
+    }
+
+    dates.sort((a, b) => a.dateStr.localeCompare(b.dateStr))
     return dates
   }, [])
 
@@ -192,7 +213,7 @@ export default function ReschedulePage({ params }: ReschedulePageProps) {
       try {
         const { default: liff } = await import('@line/liff')
         if (!(liff as any).isInitialized?.()) {
-          await liff.init({ liffId: '2009324540-weVbZ1eR' })
+          await liff.init({ liffId: RESCHEDULE_LIFF_ID })
         }
         if (!liff.isLoggedIn()) {
           liff.login()
@@ -255,7 +276,16 @@ export default function ReschedulePage({ params }: ReschedulePageProps) {
     }
   }, [tenantId, bookingId, lineUserId])
 
-  // โหลดเวลาว่างเมื่อเปลี่ยนวันที่
+  // เลื่อนไปส่วนเลือกวัน/เวลาเมื่อโหลดการจองแล้ว (กรณีเปิดจาก LINE)
+  useEffect(() => {
+    if (!booking || loading) return
+    const t = window.setTimeout(() => {
+      datetimeSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
+    return () => window.clearTimeout(t)
+  }, [booking, loading])
+
+  // โหลดเวลาว่างเมื่อเปลี่ยนวันที่ — ถ้าเป็นวันเดิม ให้เลือกเวลาเดิมเป็นค่าเริ่มต้นเมื่อช่องว่าง
   useEffect(() => {
     if (!booking || !selectedDate) return
     let cancelled = false
@@ -270,7 +300,12 @@ export default function ReschedulePage({ params }: ReschedulePageProps) {
         )
         const data = await res.json()
         if (cancelled) return
-        setSlots((data.slots || []) as TimeSlot[])
+        const list = (data.slots || []) as TimeSlot[]
+        setSlots(list)
+        if (selectedDate === booking.date && booking.startTime) {
+          const originalOk = list.some((s) => s.time === booking.startTime && s.available)
+          if (originalOk) setSelectedTime(booking.startTime)
+        }
       } catch {
         if (!cancelled) setSlots([])
       }
@@ -328,7 +363,7 @@ export default function ReschedulePage({ params }: ReschedulePageProps) {
     return null
   }
 
-  const nextDates = getNextDates()
+  const dateChips = buildRescheduleDateChips(booking.date)
   const disableConfirm = !selectedDate || !selectedTime || submitting || success
 
   return (
@@ -359,9 +394,10 @@ export default function ReschedulePage({ params }: ReschedulePageProps) {
         </div>
       </section>
 
+      <div ref={datetimeSectionRef}>
       <h2 style={styles.sectionTitle}>เลือกวันใหม่</h2>
       <div style={styles.datesRow}>
-        {nextDates.map((d) => (
+        {dateChips.map((d) => (
           <button
             key={d.dateStr}
             type="button"
@@ -402,6 +438,8 @@ export default function ReschedulePage({ params }: ReschedulePageProps) {
           </div>
         </>
       )}
+
+      </div>
 
       <div style={{ height: 96 }} />
 
