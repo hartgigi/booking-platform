@@ -69,7 +69,7 @@ const STEPS_CREATE_OA: GuideStep[] = [
   },
 ];
 
-/** ส่วน ข — เชื่อมต่อ JongMe (มีรูปประกอบ 01 … 07) */
+/** ส่วน ข — เชื่อมต่อ JongMe (มีรูปขั้น 1–6; ขั้น 7 ข้อความอย่างเดียว) */
 const STEPS_CONNECT: GuideStep[] = [
   {
     file: "01-console-home.png",
@@ -134,10 +134,8 @@ const STEPS_CONNECT: GuideStep[] = [
     tip: "ค้นคำว่า Issue หรือ long-lived บนหน้า",
   },
   {
-    file: "07-jongme-settings-line.png",
     title: "ส่วน ข — ขั้นที่ 7 — ใน JongMe",
     lines: [
-      "ชื่อไฟล์รูปที่ต้องใส่: 07-jongme-settings-line.png",
       "บันทึกการตั้งค่า (ถ้ามี)",
       "กด ทดสอบ — ควรผ่าน",
       "จากนั้นค่อยสร้าง Rich Menu ตามปุ่มในหน้าตั้งค่า",
@@ -372,8 +370,8 @@ export function LineGuide({ open, onClose, webhookUrl }: LineGuideProps) {
           <p className="text-[11px] font-semibold text-slate-800 border-l-4 border-slate-400 pl-2">
             ส่วน ข — เชื่อมต่อ JongMe กับ LINE (ทุกคนต้องทำ)
           </p>
-          {STEPS_CONNECT.map((step) => (
-            <StepBlock key={step.file} step={step} />
+          {STEPS_CONNECT.map((step, i) => (
+            <StepBlock key={step.file ?? `connect-step-${i}`} step={step} />
           ))}
 
           <div className="rounded-xl border border-red-200 bg-red-50/70 p-3">
