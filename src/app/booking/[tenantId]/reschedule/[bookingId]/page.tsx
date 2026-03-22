@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-
-const RESCHEDULE_LIFF_ID = process.env.NEXT_PUBLIC_LIFF_ID || '2009324540-weVbZ1eR'
+import { JONGME_LIFF_ID, buildLiffReturnToStartUrl } from '@/lib/line/liff'
 
 interface ReschedulePageProps {
   params: { tenantId: string; bookingId: string }
@@ -213,10 +212,15 @@ export default function ReschedulePage({ params }: ReschedulePageProps) {
       try {
         const { default: liff } = await import('@line/liff')
         if (!(liff as any).isInitialized?.()) {
-          await liff.init({ liffId: RESCHEDULE_LIFF_ID })
+          await liff.init({ liffId: JONGME_LIFF_ID })
         }
         if (!liff.isLoggedIn()) {
-          liff.login()
+          liff.login({
+            redirectUri: buildLiffReturnToStartUrl({
+              tenantId,
+              rescheduleBookingId: bookingId,
+            }),
+          })
           return
         }
         const profile = await liff.getProfile()
@@ -231,7 +235,7 @@ export default function ReschedulePage({ params }: ReschedulePageProps) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [tenantId, bookingId])
 
   // โหลดรายละเอียดการจองเดิม
   useEffect(() => {

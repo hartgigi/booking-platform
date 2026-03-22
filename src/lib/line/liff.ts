@@ -29,6 +29,25 @@ export function getLiffLoginRedirectUri(): string {
   return `${APP_ORIGIN_FALLBACK.replace(/\/$/, "")}/start`;
 }
 
+/**
+ * redirect_uri ตอนเรียก liff.login() ต้องตรงกับ URL ที่ลงทะเบียนใน LINE Login (มักเป็น /start ตาม LIFF Endpoint)
+ * ถ้าใช้ URL ปัจจุบันเป็น /booking/... โดยไม่ส่ง redirectUri จะได้ 400 Bad Request
+ */
+export function buildLiffReturnToStartUrl(params: {
+  tenantId: string;
+  rescheduleBookingId?: string;
+}): string {
+  const origin =
+    typeof window !== "undefined"
+      ? window.location.origin.replace(/\/$/, "")
+      : APP_ORIGIN_FALLBACK.replace(/\/$/, "");
+  const q = new URLSearchParams({ tenantId: params.tenantId });
+  if (params.rescheduleBookingId) {
+    q.set("rescheduleBookingId", params.rescheduleBookingId);
+  }
+  return `${origin}/start?${q.toString()}`;
+}
+
 let initDone = false;
 
 export async function initializeLiff(liffId: string): Promise<void> {

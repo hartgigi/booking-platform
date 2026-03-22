@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { JONGME_LIFF_ID, buildLiffReturnToStartUrl } from '@/lib/line/liff'
 
 interface Service {
   id: string; name: string; price: number; durationMinutes: number;
@@ -175,10 +176,12 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
         const liffModule = await import('@line/liff')
         const liff = liffModule.default
         if (!(liff as any).isInitialized?.()) {
-          await liff.init({ liffId: '2009324540-weVbZ1eR' })
+          await liff.init({ liffId: JONGME_LIFF_ID })
         }
         if (!liff.isLoggedIn()) {
-          liff.login()
+          liff.login({
+            redirectUri: buildLiffReturnToStartUrl({ tenantId }),
+          })
           return
         }
         const profile = await liff.getProfile()
@@ -190,7 +193,7 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [tenantId])
 
   useEffect(() => {
     if (!selectedDate || !selectedService || !tenantId) return
