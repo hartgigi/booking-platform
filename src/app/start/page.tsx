@@ -5,6 +5,20 @@ import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { JONGME_LIFF_ID } from "@/lib/line/liff";
 
+function readTenantBookingParams(searchParams: ReturnType<typeof useSearchParams>) {
+  let tenantId = searchParams.get("tenantId");
+  let rescheduleBookingId = searchParams.get("rescheduleBookingId");
+  if (!tenantId || !rescheduleBookingId) {
+    const liffState = searchParams.get("liff.state");
+    if (liffState) {
+      const liffParams = new URLSearchParams(liffState.replace(/^\?/, ""));
+      tenantId = tenantId || liffParams.get("tenantId");
+      rescheduleBookingId = rescheduleBookingId || liffParams.get("rescheduleBookingId");
+    }
+  }
+  return { tenantId, rescheduleBookingId };
+}
+
 function StartPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -14,6 +28,19 @@ function StartPageClient() {
 
     async function run() {
       if (typeof window === "undefined") return;
+
+      // Rich Menu / ลิงก์ LIFF แบบ ?tenantId=... เปิดที่ Endpoint /start — ต้องไปหน้าจองลูกค้า
+      // ไม่ใช่ flow เจ้าของร้าน → admin (มิฉะนั้นกด "จองคิว" จาก OA ร้านแล้วเด้ง dashboard)
+      const { tenantId: bookingTenantId, rescheduleBookingId } = readTenantBookingParams(searchParams);
+      if (bookingTenantId) {
+        if (rescheduleBookingId) {
+          router.replace(`/booking/${bookingTenantId}/reschedule/${rescheduleBookingId}`);
+        } else {
+          router.replace(`/booking/${bookingTenantId}`);
+        }
+        return;
+      }
+
       try {
         const { default: liff } = await import("@line/liff");
 
