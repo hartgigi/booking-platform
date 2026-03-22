@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import admin from 'firebase-admin'
 import { sendFlexMessage } from '@/lib/line/client'
 import { buildBookingConfirmedMessage } from '@/lib/line/messages'
+import { notifyAdminNewBooking } from '@/lib/line/notify'
 import type { Booking } from '@/types'
 
 export async function POST(request: Request, { params }: { params: { tenantId: string } }) {
@@ -64,29 +65,16 @@ export async function POST(request: Request, { params }: { params: { tenantId: s
 
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get()
     const tenant = tenantDoc.exists ? tenantDoc.data() : null
-    const adminLineUserId = tenant?.adminLineUserId
-    if (adminLineUserId && tenant?.lineChannelAccessToken) {
-      const notifyText = `🔔 จองคิวใหม่!\n━━━━━━━━━━━━━━\n👤 ลูกค้า: ${lineDisplayName || ''}\n💇 บริการ: ${service?.name || ''}\n📅 วันที่: ${date}\n⏰ เวลา: ${time} น.\n👤 ช่าง: ${staffName || 'ไม่ระบุ'}\n💰 ราคา: ฿${service?.price ?? 0}`
-      try {
-        await fetch('https://api.line.me/v2/bot/message/push', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + tenant.lineChannelAccessToken
-          },
-          body: JSON.stringify({
-            to: adminLineUserId,
-            messages: [{ type: 'text', text: notifyText }]
-          })
-        })
-      } catch (err) {
-        console.error('Failed to notify admin:', err)
-      }
+
+    const fullBooking: Booking = { ...(booking as Booking), id: bookingRef.id }
+    try {
+      await notifyAdminNewBooking(tenantId, fullBooking)
+    } catch (err) {
+      console.error('Failed to notify admin:', err)
     }
 
     // Notify customer on LINE with booking details in rich card format
     try {
-      const fullBooking: Booking = { ...(booking as Booking), id: bookingRef.id }
       const tenantName = (tenant?.name as string) || ''
       const flex = buildBookingConfirmedMessage(fullBooking, tenantName)
       await sendFlexMessage(tenantId, lineUserId, 'ยืนยันการจองแล้ว', flex)

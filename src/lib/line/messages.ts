@@ -324,7 +324,7 @@ export function buildAdminNewBookingMessage(
           action: {
             type: "postback",
             label: "ยืนยันการจอง",
-            data: `action=confirm&bookingId=${booking.id}`,
+            data: `action=admin_confirm_booking&bookingId=${booking.id}`,
           },
           style: "primary",
         },
@@ -336,6 +336,68 @@ export function buildAdminNewBookingMessage(
             data: `action=admin_cancel&bookingId=${booking.id}`,
           },
           style: "secondary",
+        },
+      ],
+      paddingAll: "md",
+    },
+  };
+}
+
+/** แจ้งร้านเมื่อลูกค้าขั้นตอนมัดจำ (ยังไม่มี booking id) */
+export function buildAdminDepositPendingMessage(params: {
+  customerName: string;
+  serviceName: string;
+  date: string;
+  time: string;
+  staffName: string;
+  price: number;
+  depositAmount: number;
+  modeLabel: string;
+}): FlexContainer {
+  const base = getBookingBaseUrl();
+  return {
+    type: "bubble",
+    header: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        {
+          type: "text",
+          text: "รอชำระมัดจำ",
+          weight: "bold",
+          size: "xl",
+          color: "#ffffff",
+          wrap: true,
+        },
+      ],
+      backgroundColor: "#F97316",
+      paddingAll: "md",
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        { type: "text", text: params.customerName, weight: "bold", size: "md", wrap: true },
+        { type: "text", text: `${params.serviceName} · ฿${params.price.toLocaleString()}`, size: "sm", wrap: true, margin: "sm", color: "#444444" },
+        { type: "text", text: `📅 ${params.date} ⏰ ${params.time} น.`, size: "sm", wrap: true, margin: "xs" },
+        { type: "text", text: `ช่าง: ${params.staffName}`, size: "sm", wrap: true, margin: "xs" },
+        { type: "text", text: `มัดจำ: ฿${params.depositAmount.toLocaleString()} · ${params.modeLabel}`, size: "sm", wrap: true, margin: "md", color: "#666666" },
+      ],
+      paddingAll: "lg",
+    },
+    footer: {
+      type: "box",
+      layout: "horizontal",
+      contents: [
+        {
+          type: "button",
+          style: "primary",
+          color: "#0D9488",
+          action: {
+            type: "uri",
+            label: "เปิดแดชบอร์ดร้าน",
+            uri: `${base}/admin`,
+          },
         },
       ],
       paddingAll: "md",

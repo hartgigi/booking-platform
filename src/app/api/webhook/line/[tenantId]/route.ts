@@ -21,6 +21,8 @@ import {
 import {
   notifyAdminNewBooking,
   notifyAdminBookingCancelledByUser,
+  notifyCustomerBookingConfirmed,
+  notifyCustomerBookingCancelledByAdmin,
 } from "@/lib/line/notify";
 import { createBooking, cancelBooking } from "@/lib/firebase/createBooking";
 import { scheduleReminder, cancelReminder } from "@/lib/booking/reminderScheduler";
@@ -1644,6 +1646,79 @@ async function handlePostback(
         text: "❌ ปฏิเสธสลิปแล้ว ระบบแจ้งลูกค้าให้ส่งสลิปใหม่แล้ว",
       },
     ]);
+    return;
+  }
+
+  /** ปุ่มใน Flex แจ้งเตือนร้าน (การจองใหม่) — เฉพาะ LINE user ที่ผูกเป็น admin ร้าน */
+  if (action === "admin_confirm_booking" || action === "confirm") {
+    const bookingId = params.bookingId;
+    if (!bookingId) return;
+    if (!tenant.adminLineUserId || lineUserId !== tenant.adminLineUserId) {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "เฉพาะผู้ดูแลร้านเท่านั้น" }]);
+      return;
+    }
+    const bookingRef = adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("bookings")
+      .doc(bookingId);
+    const snap = await bookingRef.get();
+    if (!snap.exists) {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่พบการจอง" }]);
+      return;
+    }
+    const booking = { id: snap.id, ...(snap.data() as object) } as Booking;
+    if (booking.tenantId !== tenantId) return;
+    if (booking.status === "open") {
+      await bookingRef.update({
+        status: "confirmed",
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      const updated = { ...booking, status: "confirmed" as const };
+      await scheduleReminder(tenantId, bookingId).catch(() => {});
+      await notifyCustomerBookingConfirmed(tenantId, updated).catch(() => {});
+      await sendLineReply(event.replyToken, [
+        { type: "text", text: "ยืนยันการจองแล้ว และแจ้งลูกค้าทาง LINE แล้ว" },
+      ]);
+    } else if (booking.status === "confirmed") {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "การจองนี้ยืนยันแล้ว" }]);
+    } else {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่สามารถยืนยันการจองในสถานะนี้" }]);
+    }
+    return;
+  }
+
+  if (action === "admin_cancel") {
+    const bookingId = params.bookingId;
+    if (!bookingId) return;
+    if (!tenant.adminLineUserId || lineUserId !== tenant.adminLineUserId) {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "เฉพาะผู้ดูแลร้านเท่านั้น" }]);
+      return;
+    }
+    const bookingRef = adminDb
+      .collection("tenants")
+      .doc(tenantId)
+      .collection("bookings")
+      .doc(bookingId);
+    const snap = await bookingRef.get();
+    if (!snap.exists) {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่พบการจอง" }]);
+      return;
+    }
+    const booking = { id: snap.id, ...(snap.data() as object) } as Booking;
+    if (booking.tenantId !== tenantId) return;
+    if (booking.status !== "open" && booking.status !== "confirmed") {
+      await sendLineReply(event.replyToken, [{ type: "text", text: "ไม่สามารถยกเลิกการจองในสถานะนี้" }]);
+      return;
+    }
+    await cancelReminder(tenantId, bookingId).catch(() => {});
+    await bookingRef.update({
+      status: "admin_cancelled",
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    const cancelled = { ...booking, status: "admin_cancelled" as const };
+    await sendLineReply(event.replyToken, [{ type: "text", text: "ยกเลิกการจองแล้ว และแจ้งลูกค้าแล้ว" }]);
+    await notifyCustomerBookingCancelledByAdmin(tenantId, cancelled).catch(() => {});
     return;
   }
 

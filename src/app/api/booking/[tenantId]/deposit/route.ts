@@ -1,6 +1,8 @@
 import { adminDb } from '@/lib/firebase/admin'
 import { NextResponse } from 'next/server'
 import admin from 'firebase-admin'
+import { sendFlexMessage } from '@/lib/line/client'
+import { buildAdminDepositPendingMessage } from '@/lib/line/messages'
 
 export async function POST(request: Request, { params }: { params: { tenantId: string } }) {
   console.log('[deposit] omise key prefix:', process.env.OMISE_SECRET_KEY?.substring(0, 15))
@@ -87,20 +89,19 @@ export async function POST(request: Request, { params }: { params: { tenantId: s
         if (staffDoc.exists) staffName = staffDoc.data()?.name || staffName
       }
       const adminLineUserId = tenant?.adminLineUserId
-      if (adminLineUserId && tenant?.lineChannelAccessToken) {
-        const notifyText = `🔔 จองคิวใหม่!\n━━━━━━━━━━━━━━\n👤 ลูกค้า: ${lineDisplayName || ''}\n💇 บริการ: ${serviceData?.name || ''}\n📅 วันที่: ${date}\n⏰ เวลา: ${time} น.\n👤 ช่าง: ${staffName}\n💰 ราคา: ฿${serviceData?.price ?? 0}`
+      if (adminLineUserId) {
         try {
-          await fetch('https://api.line.me/v2/bot/message/push', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + tenant.lineChannelAccessToken
-            },
-            body: JSON.stringify({
-              to: adminLineUserId,
-              messages: [{ type: 'text', text: notifyText }]
-            })
+          const flex = buildAdminDepositPendingMessage({
+            customerName: lineDisplayName || 'ลูกค้า',
+            serviceName: (serviceData?.name as string) || '',
+            date,
+            time,
+            staffName,
+            price: (serviceData?.price as number) ?? 0,
+            depositAmount,
+            modeLabel: 'ชำระผ่าน QR (อัตโนมัติ)',
           })
+          await sendFlexMessage(tenantId, adminLineUserId, 'รอชำระมัดจำ', flex)
         } catch (err) {
           console.error('Failed to notify admin:', err)
         }
@@ -159,20 +160,19 @@ export async function POST(request: Request, { params }: { params: { tenantId: s
       if (staffDoc.exists) staffName = staffDoc.data()?.name || staffName
     }
     const adminLineUserId = tenant?.adminLineUserId
-    if (adminLineUserId && tenant?.lineChannelAccessToken) {
-      const notifyText = `🔔 จองคิวใหม่!\n━━━━━━━━━━━━━━\n👤 ลูกค้า: ${lineDisplayName || ''}\n💇 บริการ: ${serviceData?.name || ''}\n📅 วันที่: ${date}\n⏰ เวลา: ${time} น.\n👤 ช่าง: ${staffName}\n💰 ราคา: ฿${serviceData?.price ?? 0}`
+    if (adminLineUserId) {
       try {
-        await fetch('https://api.line.me/v2/bot/message/push', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + tenant.lineChannelAccessToken
-          },
-          body: JSON.stringify({
-            to: adminLineUserId,
-            messages: [{ type: 'text', text: notifyText }]
-          })
+        const flex = buildAdminDepositPendingMessage({
+          customerName: lineDisplayName || 'ลูกค้า',
+          serviceName: (serviceData?.name as string) || '',
+          date,
+          time,
+          staffName,
+          price: (serviceData?.price as number) ?? 0,
+          depositAmount,
+          modeLabel: 'โอนมัดจำ (แมนนวล)',
         })
+        await sendFlexMessage(tenantId, adminLineUserId, 'รอชำระมัดจำ', flex)
       } catch (err) {
         console.error('Failed to notify admin:', err)
       }

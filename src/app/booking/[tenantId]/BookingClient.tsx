@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { JONGME_LIFF_ID, buildLiffReturnToStartUrl } from '@/lib/line/liff'
+import { JONGME_LIFF_ID } from '@/lib/line/liff'
 
 interface Service {
   id: string; name: string; price: number; durationMinutes: number;
@@ -167,7 +167,7 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
 
   const steps = ['เลือกบริการ', 'เลือกช่าง', 'เลือกวัน/เวลา', 'ยืนยันการจอง']
 
-  // โหลดโปรไฟล์ LINE ผ่าน LIFF เพื่อผูกการจองกับไอดีลูกค้าใน LINE
+  // ถ้าเปิดใน LINE และล็อกอินแล้ว จะผูก lineUserId กับการจอง — ไม่บังคับ login (ลูกค้าจองเป็น guest ได้, ลด 400 จาก OAuth)
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -178,14 +178,10 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
         if (!(liff as any).isInitialized?.()) {
           await liff.init({ liffId: JONGME_LIFF_ID })
         }
-        if (!liff.isLoggedIn()) {
-          liff.login({
-            redirectUri: buildLiffReturnToStartUrl({ tenantId }),
-          })
-          return
+        if (liff.isLoggedIn()) {
+          const profile = await liff.getProfile()
+          if (!cancelled) setLiffProfile(profile)
         }
-        const profile = await liff.getProfile()
-        if (!cancelled) setLiffProfile(profile)
       } catch (err) {
         console.error('LIFF init error:', err)
       }
@@ -193,7 +189,7 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
     return () => {
       cancelled = true
     }
-  }, [tenantId])
+  }, [])
 
   useEffect(() => {
     if (!selectedDate || !selectedService || !tenantId) return
