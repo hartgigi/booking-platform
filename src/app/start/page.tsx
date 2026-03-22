@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { JONGME_LIFF_ID } from "@/lib/line/liff";
 
 function StartPageClient() {
   const router = useRouter();
@@ -17,7 +18,7 @@ function StartPageClient() {
         const { default: liff } = await import("@line/liff");
 
         if (!(liff as any).isInitialized?.()) {
-          await liff.init({ liffId: "2009324540-weVbZ1eR" });
+          await liff.init({ liffId: JONGME_LIFF_ID });
         }
 
         // ถ้ายังไม่ล็อกอิน LIFF (เช่น เปิดจากเบราว์เซอร์นอก LINE) ไม่เรียก liff.login() ที่อาจทำให้ได้ 400

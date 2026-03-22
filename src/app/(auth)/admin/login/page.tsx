@@ -6,6 +6,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { signIn, signInWithAdminCustomToken } from "@/lib/firebase/auth";
+import { JONGME_LIFF_ID } from "@/lib/line/liff";
 import FloatingInput from "@/components/ui/FloatingInput";
 import {
   LayoutGrid,
@@ -46,7 +47,7 @@ function LoginForm() {
       try {
         const { default: liff } = await import("@line/liff");
         if (!(liff as any).isInitialized?.()) {
-          await liff.init({ liffId: "2009324540-weVbZ1eR" });
+          await liff.init({ liffId: JONGME_LIFF_ID });
         }
         if (cancelled || !liff.isLoggedIn()) return;
         autoLineLoginDone.current = true;
@@ -100,17 +101,13 @@ function LoginForm() {
     try {
       const { default: liff } = await import("@line/liff");
       if (!(liff as any).isInitialized?.()) {
-        await liff.init({ liffId: "2009324540-weVbZ1eR" });
+        await liff.init({ liffId: JONGME_LIFF_ID });
       }
       if (!liff.isLoggedIn()) {
-        // ใน LINE in-app: ไม่ส่ง redirectUri ให้ SDK ใช้ค่า default ของ LIFF (ลด 400 จาก redirect_uri ไม่ตรง)
-        // นอก LINE: ส่ง origin จริง + /start ให้ตรงกับที่ลงทะเบียนใน LINE Login callback
-        if (liff.isInClient?.()) {
-          liff.login();
-        } else {
-          const { getLiffLoginRedirectUri } = await import("@/lib/line/liff");
-          liff.login({ redirectUri: getLiffLoginRedirectUri() });
-        }
+        // ไม่ใช้ liff.login() ที่ยิง OAuth ในเบราว์เซอร์ (มักได้ 400 ถ้า redirect_uri / context ไม่ตรง)
+        // เปิด LIFF ผ่านลิงก์ทางการ — LINE จะพาไป Endpoint (/start) หลังล็อกอิน
+        const { getLiffUniversalLink } = await import("@/lib/line/liff");
+        window.location.href = getLiffUniversalLink();
         return;
       }
       const profile = await liff.getProfile();

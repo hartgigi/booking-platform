@@ -1,5 +1,18 @@
 import liff from "@line/liff";
 
+/** LIFF ID ของ JongMe — ต้องตรงกับ LINE Developers (Channel เดียวกับ Messaging API) */
+export const JONGME_LIFF_ID =
+  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_LIFF_ID) ||
+  "2009324540-weVbZ1eR";
+
+/**
+ * ลิงก์เปิด LIFF แบบทางการ — ให้ LINE จัดการล็อกอินเอง
+ * ใช้แทน liff.login() บนหน้าเว็บธรรมดาเพื่อลด 400 Bad Request จาก OAuth redirect_uri
+ */
+export function getLiffUniversalLink(): string {
+  return `https://liff.line.me/${JONGME_LIFF_ID}`;
+}
+
 /** fallback เมื่อไม่มี window (SSR) — ต้องตรงกับ LIFF Endpoint + LINE Login callback */
 const APP_ORIGIN_FALLBACK =
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_APP_URL) ||
