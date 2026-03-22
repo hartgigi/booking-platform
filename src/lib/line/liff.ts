@@ -1,12 +1,19 @@
 import liff from "@line/liff";
 
-/** โดเมนหลักของแอป — ใช้เป็น redirect URI ตอน LINE login (ต้องตรงกับ Endpoint URL ใน LINE LIFF) */
-const APP_ORIGIN =
+/** fallback เมื่อไม่มี window (SSR) — ต้องตรงกับ LIFF Endpoint + LINE Login callback */
+const APP_ORIGIN_FALLBACK =
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_APP_URL) ||
   "https://jongme.com";
 
+/**
+ * redirect_uri ต้องตรงกับ LIFF Endpoint URL และ Callback URL ใน LINE Login (ทุกตัวอักษร)
+ * ใช้ origin ของหน้าที่ผู้ใช้เปิดจริง (www vs non-www) เพื่อลด 400 Bad Request
+ */
 export function getLiffLoginRedirectUri(): string {
-  return `${APP_ORIGIN.replace(/\/$/, "")}/start`;
+  if (typeof window !== "undefined") {
+    return `${window.location.origin.replace(/\/$/, "")}/start`;
+  }
+  return `${APP_ORIGIN_FALLBACK.replace(/\/$/, "")}/start`;
 }
 
 let initDone = false;

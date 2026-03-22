@@ -103,8 +103,14 @@ function LoginForm() {
         await liff.init({ liffId: "2009324540-weVbZ1eR" });
       }
       if (!liff.isLoggedIn()) {
-        const { getLiffLoginRedirectUri } = await import("@/lib/line/liff");
-        liff.login({ redirectUri: getLiffLoginRedirectUri() });
+        // ใน LINE in-app: ไม่ส่ง redirectUri ให้ SDK ใช้ค่า default ของ LIFF (ลด 400 จาก redirect_uri ไม่ตรง)
+        // นอก LINE: ส่ง origin จริง + /start ให้ตรงกับที่ลงทะเบียนใน LINE Login callback
+        if (liff.isInClient?.()) {
+          liff.login();
+        } else {
+          const { getLiffLoginRedirectUri } = await import("@/lib/line/liff");
+          liff.login({ redirectUri: getLiffLoginRedirectUri() });
+        }
         return;
       }
       const profile = await liff.getProfile();
