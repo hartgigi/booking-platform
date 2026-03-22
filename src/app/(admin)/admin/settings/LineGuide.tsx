@@ -14,16 +14,16 @@ const GUIDE_IMAGE_DIR = "/images/line-oa-guide";
 type GuideTrack = "from_zero" | "connect_only";
 
 type GuideStep = {
-  file: string;
+  /** ถ้ามี = แสดงรูปจาก public/images/line-oa-guide/ (ใช้เฉพาะส่วนเชื่อมต่อ) */
+  file?: string;
   title: string;
   lines: string[];
   tip?: string;
 };
 
-/** ส่วน ก — สร้าง LINE OA ตั้งแต่ยังไม่มี (แคปรูปชื่อ oa-00 … oa-04) */
+/** ส่วน ก — สร้าง LINE OA (ข้อความอย่างเดียว ไม่มีรูปในระบบ) */
 const STEPS_CREATE_OA: GuideStep[] = [
   {
-    file: "oa-00-manager-login.png",
     title: "ส่วน ก — ขั้นที่ 1 — เข้า LINE Official Account Manager",
     lines: [
       "เปิด https://manager.line.biz/ ในเบราว์เซอร์ (หรือใช้แอป LINE Official Account)",
@@ -33,7 +33,6 @@ const STEPS_CREATE_OA: GuideStep[] = [
     tip: "ถ้าไม่เจอเมนู ให้ค้นหาคำว่า LINE Official Account Manager หรือ manager.line.biz",
   },
   {
-    file: "oa-01-create-official-account.png",
     title: "ส่วน ก — ขั้นที่ 2 — สร้างบัญชี OA ใหม่",
     lines: [
       "กดสร้างบัญชีทางการ / Create / เพิ่มบัญชี (ชื่อปุ่มอาจต่างกัน)",
@@ -43,7 +42,6 @@ const STEPS_CREATE_OA: GuideStep[] = [
     tip: "ภาษาไทย/อังกฤษได้หมด ขอให้จบขั้นตอนจนขึ้นว่าสร้างสำเร็จ",
   },
   {
-    file: "oa-02-oa-home-dashboard.png",
     title: "ส่วน ก — ขั้นที่ 3 — หลังสร้าง OA สำเร็จ",
     lines: [
       "คุณควรเห็นหน้าแดชบอร์ด / ตั้งค่าของ OA ร้าน",
@@ -52,7 +50,6 @@ const STEPS_CREATE_OA: GuideStep[] = [
     ],
   },
   {
-    file: "oa-03-developers-provider.png",
     title: "ส่วน ก — ขั้นที่ 4 — เข้า LINE Developers สร้าง Provider",
     lines: [
       "เปิด https://developers.line.biz/console/ แล้วล็อกอินด้วย LINE (แนะนำบัญชีเดียวกับแอดมิน OA)",
@@ -62,7 +59,6 @@ const STEPS_CREATE_OA: GuideStep[] = [
     tip: "ถ้า LINE ให้ “เชื่อม” หรือ “เพิ่ม” OA เข้า Provider ให้ทำตามหน้าจอ",
   },
   {
-    file: "oa-04-channel-visible-in-console.png",
     title: "ส่วน ก — ขั้นที่ 5 — ให้มี Channel ของ OA ใน Console",
     lines: [
       "ใน Provider ควรเห็น Channel ที่เชื่อมกับ OA ร้านคุณ (มักมีคำว่า Messaging API หรือ Official Account)",
@@ -73,12 +69,13 @@ const STEPS_CREATE_OA: GuideStep[] = [
   },
 ];
 
-/** ส่วน ข — เชื่อมต่อ JongMe (แคปรูปชื่อ 01 … 07) */
+/** ส่วน ข — เชื่อมต่อ JongMe (มีรูปประกอบ 01 … 07) */
 const STEPS_CONNECT: GuideStep[] = [
   {
     file: "01-console-home.png",
     title: "ส่วน ข — ขั้นที่ 1 — เข้า LINE Developers Console",
     lines: [
+      "ชื่อไฟล์รูปที่ต้องใส่: 01-console-home.png",
       "เปิด developers.line.biz/console แล้วล็อกอินด้วย LINE",
       "เลือก Provider → เลือก Channel ของ OA ร้าน (มี Messaging API)",
     ],
@@ -88,6 +85,7 @@ const STEPS_CONNECT: GuideStep[] = [
     file: "02-channel-list.png",
     title: "ส่วน ข — ขั้นที่ 2 — ยืนยันว่าเลือก Channel ถูกตัว",
     lines: [
+      "ชื่อไฟล์รูปที่ต้องใส่: 02-channel-list.png",
       "ในรายการ Channel ให้เลือกตัวที่ลูกค้าทักแชทร้านใน LINE",
       "ไม่ใช่ channel แบบ LINE Login ของแอปอื่น",
     ],
@@ -97,6 +95,7 @@ const STEPS_CONNECT: GuideStep[] = [
     file: "03-open-messaging-api-tab.png",
     title: "ส่วน ข — ขั้นที่ 3 — เปิดหน้า Channel",
     lines: [
+      "ชื่อไฟล์รูปที่ต้องใส่: 03-open-messaging-api-tab.png",
       "หลังเข้า channel แล้ว ดูแท็บด้านบน: Basic settings, Messaging API, LIFF ฯลฯ",
       "ร้านค้าใช้แท็บ Messaging API + Basic settings เป็นหลัก",
     ],
@@ -105,6 +104,7 @@ const STEPS_CONNECT: GuideStep[] = [
     file: "04-basic-settings-secret.png",
     title: "ส่วน ข — ขั้นที่ 4 — คัดลอก Channel secret",
     lines: [
+      "ชื่อไฟล์รูปที่ต้องใส่: 04-basic-settings-secret.png",
       "เปิดแท็บ Basic settings",
       "หา Channel secret → แสดงค่า → คัดลอก → วางในช่อง Channel Secret ใน JongMe",
     ],
@@ -114,6 +114,7 @@ const STEPS_CONNECT: GuideStep[] = [
     file: "05-messaging-api-webhook.png",
     title: "ส่วน ข — ขั้นที่ 5 — ตั้ง Webhook",
     lines: [
+      "ชื่อไฟล์รูปที่ต้องใส่: 05-messaging-api-webhook.png",
       "เปิดแท็บ Messaging API",
       "เปิด Use webhook เป็น ON",
       "วาง Webhook URL จากกล่องสีเขียวด้านล่าง (กดคัดลอก)",
@@ -125,6 +126,7 @@ const STEPS_CONNECT: GuideStep[] = [
     file: "06-messaging-api-token.png",
     title: "ส่วน ข — ขั้นที่ 6 — สร้าง Channel access token",
     lines: [
+      "ชื่อไฟล์รูปที่ต้องใส่: 06-messaging-api-token.png",
       "ยังในแท็บ Messaging API",
       "หา Channel access token (long-lived) → กด Issue",
       "คัดลอก token ทั้งก้อน → วางในช่อง Channel Access Token ใน JongMe",
@@ -135,6 +137,7 @@ const STEPS_CONNECT: GuideStep[] = [
     file: "07-jongme-settings-line.png",
     title: "ส่วน ข — ขั้นที่ 7 — ใน JongMe",
     lines: [
+      "ชื่อไฟล์รูปที่ต้องใส่: 07-jongme-settings-line.png",
       "บันทึกการตั้งค่า (ถ้ามี)",
       "กด ทดสอบ — ควรผ่าน",
       "จากนั้นค่อยสร้าง Rich Menu ตามปุ่มในหน้าตั้งค่า",
@@ -213,9 +216,11 @@ function StepBlock({ step }: { step: GuideStep }) {
         </ol>
         {step.tip && <Tip>{step.tip}</Tip>}
       </div>
-      <div className="p-2 sm:p-3 bg-slate-50/50">
-        <GuideImage file={step.file} stepLabel={step.title} />
-      </div>
+      {step.file ? (
+        <div className="p-2 sm:p-3 bg-slate-50/50 border-t border-slate-100">
+          <GuideImage file={step.file} stepLabel={step.title} />
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -257,7 +262,7 @@ export function LineGuide({ open, onClose, webhookUrl }: LineGuideProps) {
               📖 วิธีเชื่อมต่อ LINE OA กับ JongMe
             </h2>
             <p className="text-[10px] text-slate-500 mt-0.5">
-              เลือกแท็บด้านล่าง — รูปใส่ที่{" "}
+              ส่วนเชื่อมต่อมีรูปประกอบที่{" "}
               <code className="text-[9px] bg-slate-100 px-1 rounded">public/images/line-oa-guide/</code>
             </p>
           </div>
@@ -323,10 +328,10 @@ export function LineGuide({ open, onClose, webhookUrl }: LineGuideProps) {
           {track === "from_zero" && (
             <>
               <p className="text-[11px] font-semibold text-slate-800 border-l-4 border-teal-500 pl-2">
-                ส่วน ก — สร้าง LINE OA (ทำครบก่อน แล้วค่อยไปส่วน ข)
+                ส่วน ก — สร้าง LINE OA (ข้อความอย่างเดียว ไม่มีรูป — ทำครบก่อน แล้วค่อยไปส่วน ข)
               </p>
-              {STEPS_CREATE_OA.map((step) => (
-                <StepBlock key={step.file} step={step} />
+              {STEPS_CREATE_OA.map((step, i) => (
+                <StepBlock key={`oa-${i}`} step={step} />
               ))}
               <div className="flex items-center gap-2 py-2">
                 <div className="h-px flex-1 bg-slate-300" />
