@@ -21,14 +21,40 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+type LineBrowserContext = "checking" | "in_line" | "outside_line";
+
 function LoginForm() {
   const [error, setError] = useState<string | null>(null);
+  const [lineBrowserContext, setLineBrowserContext] =
+    useState<LineBrowserContext>("checking");
+  const [lineLoginBusy, setLineLoginBusy] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   const registered = searchParams.get("registered") === "true";
   const tenantIdFromQuery = searchParams.get("tenantId") || "";
   const fromLine = searchParams.get("from") === "line";
   const autoLineLoginDone = useRef(false);
+
+  // บอกว่าเปิดจากในแอป LINE หรือเบราว์เซอร์ธรรมดา (บนคอมมักเป็น outside → UX ชัดขึ้น)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { default: liff } = await import("@line/liff");
+        if (!(liff as any).isInitialized?.()) {
+          await liff.init({ liffId: JONGME_LIFF_ID });
+        }
+        if (cancelled) return;
+        setLineBrowserContext(liff.isInClient?.() ? "in_line" : "outside_line");
+      } catch {
+        if (!cancelled) setLineBrowserContext("outside_line");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const {
     control,
     handleSubmit,
@@ -107,6 +133,7 @@ function LoginForm() {
         // ไม่ใช้ liff.login() ที่ยิง OAuth ในเบราว์เซอร์ (มักได้ 400 ถ้า redirect_uri / context ไม่ตรง)
         // เปิด LIFF ผ่านลิงก์ทางการ — LINE จะพาไป Endpoint (/start) หลังล็อกอิน
         const { getLiffUniversalLink } = await import("@/lib/line/liff");
+        setLineLoginBusy(true);
         window.location.href = getLiffUniversalLink();
         return;
       }
@@ -316,13 +343,38 @@ function LoginForm() {
               {isSubmitting ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
             </button>
           </form>
+          {lineBrowserContext === "outside_line" && (
+            <div
+              role="note"
+              className="mt-4 rounded-lg border border-sky-200 bg-sky-50 text-sky-900 text-xs px-3 py-2.5 leading-relaxed"
+            >
+              <p className="font-medium text-sky-950 mb-1">
+                เปิดจากคอมพิวเตอร์ / เบราว์เซอร์ธรรมดา
+              </p>
+              <p className="text-sky-800">
+                ระบบตรวจแล้วว่าคุณไม่ได้อยู่ในแอป LINE — ปุ่มด้านล่างจะพาไปล็อกอิน LINE
+                หรือเปิดแอป LINE หากไม่เห็นการเปลี่ยนหน้าชัดเจน{" "}
+                <strong>แนะนำใช้อีเมลและรหัสผ่านด้านบน</strong> หรือเปิดหน้านี้จากปุ่ม
+                「เริ่มต้นใช้งาน」ในเมนู LINE บนมือถือ (จะเข้าระบบได้ลื่นที่สุด)
+              </p>
+            </div>
+          )}
+          {lineBrowserContext === "in_line" && fromLine && (
+            <div
+              role="status"
+              className="mt-4 rounded-lg border border-teal-200 bg-teal-50 text-teal-900 text-xs px-3 py-2"
+            >
+              เปิดจาก LINE แล้ว — กด「เข้าสู่ระบบด้วย LINE」เพื่อยืนยันตัวตนกับร้านของคุณ
+            </div>
+          )}
           <div className="mt-4">
             <button
               type="button"
+              disabled={lineLoginBusy}
               onClick={handleLineLogin}
-              className="w-full rounded-lg border border-[#00B900] py-3 px-4 font-medium text-[#00B900] hover:bg-[#00B900]/5 transition-colors text-sm"
+              className="w-full rounded-lg border border-[#00B900] py-3 px-4 font-medium text-[#00B900] hover:bg-[#00B900]/5 transition-colors text-sm disabled:opacity-60 disabled:cursor-wait"
             >
-              เข้าสู่ระบบด้วย LINE
+              {lineLoginBusy ? "กำลังเปิด LINE…" : "เข้าสู่ระบบด้วย LINE"}
             </button>
           </div>
           <p className="text-center text-slate-500 text-sm mt-6">

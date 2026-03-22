@@ -42,6 +42,7 @@
 | `FIREBASE_STORAGE_BUCKET` | Firebase Admin | `booking-platform-80979.appspot.com` |
 | `CRON_SECRET` | API cron reminders | สร้างรหัสลับเอง (ถ้าใช้ cron) |
 | `NEXT_PUBLIC_LIFF_ID` | หน้า booking ลูกค้า (LIFF) | ถ้ามี LIFF (ไม่บังคับตอนทดสอบ) |
+| `OMISE_SECRET_KEY` | ชำระแพ็กเกจ (PromptPay QR), มัดจำ | **Live:** `skey_live_...` จาก [Omise Dashboard](https://dashboard.omise.co) — ดูขั้นตอนเต็มใน [`docs/OMISE_PRODUCTION.md`](./docs/OMISE_PRODUCTION.md) |
 
 **ถ้าใช้ Service Account แบบ JSON ทั้งก้อน:**
 

@@ -24,7 +24,16 @@ interface SettingsClientProps {
 
 const FIREBASE_TOKEN_KEY = "firebaseToken";
 
+function buildLineWebhookUrl(tenantId: string): string {
+  const base =
+    (typeof process !== "undefined" &&
+      process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "")) ||
+    "https://www.jongme.com";
+  return `${base}/api/webhook/line/${tenantId}`;
+}
+
 export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
+  const lineWebhookUrl = buildLineWebhookUrl(initialTenant.id);
   const [name, setName] = useState(initialTenant.name);
   const [phone, setPhone] = useState(initialTenant.phone);
   const [address, setAddress] = useState(initialTenant.address);
@@ -249,14 +258,14 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
                   <input
                     type="text"
                     readOnly
-                    value={`https://www.jongme.com/api/webhook/line/${initialTenant.id}`}
+                    value={lineWebhookUrl}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-900 overflow-x-auto"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={async () => {
-                    const url = `https://www.jongme.com/api/webhook/line/${initialTenant.id}`;
+                    const url = lineWebhookUrl;
                     try {
                       if (typeof navigator !== "undefined" && navigator.clipboard) {
                         await navigator.clipboard.writeText(url);
@@ -374,7 +383,11 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
           </div>
         </section>
 
-        <LineGuide open={lineGuideOpen} onClose={() => setLineGuideOpen(false)} />
+        <LineGuide
+          open={lineGuideOpen}
+          onClose={() => setLineGuideOpen(false)}
+          webhookUrl={lineWebhookUrl}
+        />
 
         <section className="border-b border-slate-200 pb-6 mb-6 space-y-4">
           <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider">
