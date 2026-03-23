@@ -67,14 +67,9 @@ function StartPageClient() {
 
         if (cancelled) return;
 
-        // ถ้าเป็นร้านค้าที่สมัครแล้ว → ไปหน้าเข้าสู่ระบบ
+        // ถ้าเป็นร้านค้าที่สมัครแล้ว → ไปหน้าเข้าสู่ระบบ (อีเมล/รหัสผ่าน)
         if (data.exists && data.tenantId) {
-          const qs = new URLSearchParams(
-            Object.fromEntries(searchParams.entries())
-          );
-          qs.set("from", "line");
-          qs.set("tenantId", data.tenantId as string);
-          router.replace(`/admin/login?${qs.toString()}`);
+          router.replace("/admin/login");
           return;
         }
 

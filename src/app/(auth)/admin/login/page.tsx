@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { signIn, signInWithAdminCustomToken } from "@/lib/firebase/auth";
-import { JONGME_LIFF_ID } from "@/lib/line/liff";
+import { signIn } from "@/lib/firebase/auth";
 import FloatingInput from "@/components/ui/FloatingInput";
 import {
   LayoutGrid,
@@ -21,40 +20,11 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-type LineBrowserContext = "checking" | "in_line" | "outside_line";
-
 function LoginForm() {
   const [error, setError] = useState<string | null>(null);
-  const [lineBrowserContext, setLineBrowserContext] =
-    useState<LineBrowserContext>("checking");
-  const [lineLoginBusy, setLineLoginBusy] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   const registered = searchParams.get("registered") === "true";
-  const tenantIdFromQuery = searchParams.get("tenantId") || "";
-  const fromLine = searchParams.get("from") === "line";
-  const autoLineLoginDone = useRef(false);
-
-  // บอกว่าเปิดจากในแอป LINE หรือเบราว์เซอร์ธรรมดา (บนคอมมักเป็น outside → UX ชัดขึ้น)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { default: liff } = await import("@line/liff");
-        if (!(liff as any).isInitialized?.()) {
-          await liff.init({ liffId: JONGME_LIFF_ID });
-        }
-        if (cancelled) return;
-        setLineBrowserContext(liff.isInClient?.() ? "in_line" : "outside_line");
-      } catch {
-        if (!cancelled) setLineBrowserContext("outside_line");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
   const {
     control,
     handleSubmit,
@@ -63,136 +33,6 @@ function LoginForm() {
     resolver: zodResolver(schema),
     defaultValues: { email: "", password: "" },
   });
-
-  // หลังกลับจาก LINE login มาที่ /start แล้วถูกส่งมาหน้า login — ถ้า LIFF login แล้วให้เข้าสู่ระบบด้วย LINE อัตโนมัติ
-  useEffect(() => {
-    if (!fromLine || autoLineLoginDone.current || typeof window === "undefined")
-      return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { default: liff } = await import("@line/liff");
-        if (!(liff as any).isInitialized?.()) {
-          await liff.init({ liffId: JONGME_LIFF_ID });
-        }
-        if (cancelled || !liff.isLoggedIn()) return;
-        autoLineLoginDone.current = true;
-        const profile = await liff.getProfile();
-        if (!profile.userId || cancelled) return;
-        let tenantId = tenantIdFromQuery;
-        if (!tenantId) {
-          const byLineRes = await fetch(
-            `/api/tenants/by-line?lineUserId=${encodeURIComponent(profile.userId)}`
-          );
-          const byLineData = await byLineRes.json();
-          if (byLineData.exists && byLineData.tenantId) tenantId = byLineData.tenantId;
-        }
-        if (!tenantId || cancelled) return;
-        const res = await fetch("/api/auth/line-admin-login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lineUserId: profile.userId, tenantId }),
-        });
-        if (!res.ok || cancelled) {
-          const data = await res.json().catch(() => ({}));
-          setError(data?.error || "ไม่สามารถเข้าสู่ระบบด้วย LINE ได้");
-          return;
-        }
-        const data = await res.json();
-        const customToken = data.customToken as string;
-        const userCredential = await signInWithAdminCustomToken(customToken);
-        const idToken = await userCredential.user.getIdToken();
-        window.localStorage.setItem("firebaseToken", idToken);
-        await fetch("/api/auth/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ idToken }),
-          cache: "no-store",
-        });
-        router.push("/admin/dashboard");
-      } catch (e) {
-        if (!cancelled) {
-          console.error("Auto LINE login error:", e);
-          setError("เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย LINE");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [fromLine, tenantIdFromQuery, router]);
-
-  async function handleLineLogin() {
-    setError(null);
-    try {
-      const { default: liff } = await import("@line/liff");
-      if (!(liff as any).isInitialized?.()) {
-        await liff.init({ liffId: JONGME_LIFF_ID });
-      }
-      if (!liff.isLoggedIn()) {
-        // ไม่ใช้ liff.login() ที่ยิง OAuth ในเบราว์เซอร์ (มักได้ 400 ถ้า redirect_uri / context ไม่ตรง)
-        // เปิด LIFF ผ่านลิงก์ทางการ — LINE จะพาไป Endpoint (/start) หลังล็อกอิน
-        const { getLiffUniversalLink } = await import("@/lib/line/liff");
-        setLineLoginBusy(true);
-        window.location.href = getLiffUniversalLink();
-        return;
-      }
-      const profile = await liff.getProfile();
-      if (!profile.userId) {
-        setError("ไม่สามารถอ่านข้อมูล LINE ได้ กรุณาลองใหม่");
-        return;
-      }
-      // ถ้า URL ไม่มี tenantId (เช่น เปิดจาก bookmark หรือ redirect หลุด) ให้ดึงจาก by-line
-      let tenantId = tenantIdFromQuery;
-      if (!tenantId) {
-        const byLineRes = await fetch(
-          `/api/tenants/by-line?lineUserId=${encodeURIComponent(profile.userId)}`
-        );
-        const byLineData = await byLineRes.json();
-        if (byLineData.exists && byLineData.tenantId) {
-          tenantId = byLineData.tenantId;
-        }
-      }
-      if (!tenantId) {
-        setError(
-          "ไม่พบร้านที่สมัครกับบัญชี LINE นี้ กรุณาเริ่มจากปุ่ม \"เริ่มต้นใช้งาน\" ในเมนู LINE หรือสมัครแพ็กเกจก่อน"
-        );
-        return;
-      }
-      const res = await fetch("/api/auth/line-admin-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lineUserId: profile.userId,
-          tenantId,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(
-          data?.error || "ไม่สามารถเข้าสู่ระบบด้วย LINE ได้ กรุณาลองใหม่"
-        );
-        return;
-      }
-      const data = await res.json();
-      const customToken = data.customToken as string;
-      const userCredential = await signInWithAdminCustomToken(customToken);
-      const idToken = await userCredential.user.getIdToken();
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("firebaseToken", idToken);
-      }
-      await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
-        cache: "no-store",
-      });
-      router.push("/admin/dashboard");
-    } catch (err) {
-      console.error("LINE admin login error:", err);
-      setError("เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย LINE");
-    }
-  }
 
   async function onSubmit(data: FormData) {
     setError(null);
@@ -343,40 +183,6 @@ function LoginForm() {
               {isSubmitting ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
             </button>
           </form>
-          {lineBrowserContext === "outside_line" && (
-            <div
-              role="note"
-              className="mt-4 rounded-lg border border-sky-200 bg-sky-50 text-sky-900 text-xs px-3 py-2.5 leading-relaxed"
-            >
-              <p className="font-medium text-sky-950 mb-1">
-                เปิดจากคอมพิวเตอร์ / เบราว์เซอร์ธรรมดา
-              </p>
-              <p className="text-sky-800">
-                ระบบตรวจแล้วว่าคุณไม่ได้อยู่ในแอป LINE — ปุ่มด้านล่างจะพาไปล็อกอิน LINE
-                หรือเปิดแอป LINE หากไม่เห็นการเปลี่ยนหน้าชัดเจน{" "}
-                <strong>แนะนำใช้อีเมลและรหัสผ่านด้านบน</strong> หรือเปิดหน้านี้จากปุ่ม
-                「เริ่มต้นใช้งาน」ในเมนู LINE บนมือถือ (จะเข้าระบบได้ลื่นที่สุด)
-              </p>
-            </div>
-          )}
-          {lineBrowserContext === "in_line" && fromLine && (
-            <div
-              role="status"
-              className="mt-4 rounded-lg border border-teal-200 bg-teal-50 text-teal-900 text-xs px-3 py-2"
-            >
-              เปิดจาก LINE แล้ว — กด「เข้าสู่ระบบด้วย LINE」เพื่อยืนยันตัวตนกับร้านของคุณ
-            </div>
-          )}
-          <div className="mt-4">
-            <button
-              type="button"
-              disabled={lineLoginBusy}
-              onClick={handleLineLogin}
-              className="w-full rounded-lg border border-[#00B900] py-3 px-4 font-medium text-[#00B900] hover:bg-[#00B900]/5 transition-colors text-sm disabled:opacity-60 disabled:cursor-wait"
-            >
-              {lineLoginBusy ? "กำลังเปิด LINE…" : "เข้าสู่ระบบด้วย LINE"}
-            </button>
-          </div>
           <p className="text-center text-slate-500 text-sm mt-6">
             ยังไม่มีบัญชี?{" "}
             <a
