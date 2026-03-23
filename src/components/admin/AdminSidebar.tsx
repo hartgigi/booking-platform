@@ -20,7 +20,7 @@ interface AdminSidebarProps {
 }
 
 const mainNav = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/dashboard", label: "จัดการจอง", icon: LayoutDashboard },
 ];
 const managementNav = [
   { href: "/admin/services", label: "บริการ", icon: Scissors },
@@ -32,7 +32,7 @@ const accountNav = [
 ];
 
 const PAGE_TITLES: Record<string, string> = {
-  "/admin/dashboard": "Dashboard",
+  "/admin/dashboard": "จัดการจอง",
   "/admin/services": "บริการ",
   "/admin/staff": "พนักงาน",
   "/admin/package": "แพ็คเกจ",
