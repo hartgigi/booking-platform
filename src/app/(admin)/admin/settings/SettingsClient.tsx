@@ -495,47 +495,45 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
           </div>
         </section>
 
-        {false && (
-          <section className="border-b border-slate-200 pb-6 mb-6 space-y-3">
-            <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider">
-              LINE OA
-            </h2>
-            <p className="text-xs text-slate-500">
-              สร้าง Rich Menu สำหรับให้ลูกค้าจองคิวผ่าน LINE ได้ง่ายขึ้น
-            </p>
-            <button
-              type="button"
-              onClick={async () => {
-                setCreatingMenu(true);
-                try {
-                  const res = await fetch("/api/admin/rich-menu", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ tenantId: initialTenant.id }),
-                  });
-                  const data = await res.json();
-                  if (data.success) {
-                    alert("สร้าง Rich Menu สำเร็จ!");
-                  } else {
-                    alert(
-                      "ไม่สามารถสร้าง Rich Menu: " +
-                        (data.error || "")
-                    );
-                  }
-                } catch {
-                  alert("เกิดข้อผิดพลาด");
+        <section className="border-b border-slate-200 pb-6 mb-6 space-y-3">
+          <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider">
+            LINE OA
+          </h2>
+          <p className="text-xs text-slate-500">
+            สร้างหรือรีเฟรช Rich Menu ของร้านนี้ หากลูกค้ากดเมนูแล้วเด้งหน้าเดิมหรือขึ้น 400 ให้กดปุ่มนี้
+          </p>
+          <button
+            type="button"
+            onClick={async () => {
+              setCreatingMenu(true);
+              try {
+                const res = await fetch("/api/admin/rich-menu", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ tenantId: initialTenant.id }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                  success("สร้าง/รีเฟรช Rich Menu สำเร็จ");
+                } else {
+                  errorToast(
+                    "ไม่สามารถสร้าง Rich Menu: " + (data.error || "unknown error")
+                  );
                 }
+              } catch {
+                errorToast("เกิดข้อผิดพลาดระหว่างสร้าง Rich Menu");
+              } finally {
                 setCreatingMenu(false);
-              }}
-              disabled={creatingMenu}
-              className="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 disabled:opacity-50"
-            >
-              {creatingMenu
-                ? "กำลังสร้าง..."
-                : "📱 สร้าง Rich Menu สำหรับ LINE"}
-            </button>
-          </section>
-        )}
+              }
+            }}
+            disabled={creatingMenu}
+            className="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 disabled:opacity-50"
+          >
+            {creatingMenu
+              ? "กำลังสร้าง..."
+              : "📱 สร้าง/รีเฟรช Rich Menu สำหรับ LINE"}
+          </button>
+        </section>
 
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 mb-6">
           <p className="text-sm text-slate-600">
