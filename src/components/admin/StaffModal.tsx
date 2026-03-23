@@ -36,6 +36,33 @@ export default function StaffModal({ tenantId, staff, services, tenantDefaults, 
   const initialWorkDays = (staff?.workDays ?? fallbackWorkDays).filter((d) =>
     fallbackWorkDays.includes(d)
   )
+
+  const openTimeRaw = tenantDefaults?.openTime ?? "09:00"
+  const closeTimeRaw = tenantDefaults?.closeTime ?? "18:00"
+
+  function timeToMinutes(t: string): number | null {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(t)
+    if (!m) return null
+    const h = Number(m[1])
+    const min = Number(m[2])
+    if (Number.isNaN(h) || Number.isNaN(min)) return null
+    return h * 60 + min
+  }
+
+  function minutesToTime(min: number): string {
+    const h = Math.floor(min / 60) % 24
+    const m = min % 60
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+  }
+
+  const openMin = timeToMinutes(openTimeRaw)
+  const closeMin = timeToMinutes(closeTimeRaw)
+
+  function clampTimeStr(t: string, minMinutes: number, maxMinutes: number): string {
+    const m = timeToMinutes(t)
+    if (m == null) return t
+    return minutesToTime(Math.max(minMinutes, Math.min(m, maxMinutes)))
+  }
   const [name, setName] = useState(staff?.name ?? '')
   const [serviceIds, setServiceIds] = useState<string[]>(staff?.serviceIds ?? [])
   const [workDays, setWorkDays] = useState<number[]>(initialWorkDays)
@@ -46,7 +73,11 @@ export default function StaffModal({ tenantId, staff, services, tenantDefaults, 
     staff?.workEndTime ?? tenantDefaults?.closeTime ?? '18:00'
   )
   const [loading, setLoading] = useState(false)
-  const [errors, setErrors] = useState<{ name?: string; services?: string }>({})
+  const [errors, setErrors] = useState<{
+    name?: string
+    services?: string
+    time?: string
+  }>({})
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -91,9 +122,18 @@ export default function StaffModal({ tenantId, staff, services, tenantDefaults, 
   }
 
   async function handleSubmit() {
-    const next: { name?: string; services?: string } = {}
+    const next: { name?: string; services?: string; time?: string } = {}
     if (!name.trim()) next.name = 'กรุณากรอกชื่อ'
     if (serviceIds.length === 0) next.services = 'กรุณาเลือกบริการอย่างน้อย 1 อย่าง'
+
+    if (openMin != null && closeMin != null) {
+      const s = timeToMinutes(startTime)
+      const e = timeToMinutes(endTime)
+      if (s == null || e == null) next.time = "กรุณาเลือกเวลาให้ถูกต้อง"
+      else if (s < openMin || s > closeMin) next.time = "เวลาเริ่มต้องอยู่ในช่วงร้านเปิด"
+      else if (e < openMin || e > closeMin) next.time = "เวลาสิ้นสุดต้องอยู่ในช่วงร้านเปิด"
+      else if (e <= s) next.time = "เวลาสิ้นสุดต้องมากกว่าเวลาเริ่ม"
+    }
     setErrors(next)
     if (Object.keys(next).length > 0) return
     setLoading(true)
@@ -241,16 +281,43 @@ export default function StaffModal({ tenantId, staff, services, tenantDefaults, 
                 ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 p-4 bg-teal-50 rounded-xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-teal-50 rounded-xl">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">เวลาเริ่ม *</label>
-                <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm" />
+                  <input
+                    type="time"
+                    value={startTime}
+                    min={openTimeRaw}
+                    max={closeTimeRaw}
+                    onChange={(e) => {
+                      if (openMin == null || closeMin == null) {
+                        setStartTime(e.target.value)
+                        return
+                      }
+                      setStartTime(clampTimeStr(e.target.value, openMin, closeMin))
+                    }}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm appearance-none"
+                  />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">เวลาสิ้นสุด *</label>
-                <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm" />
+                  <input
+                    type="time"
+                    value={endTime}
+                    min={openTimeRaw}
+                    max={closeTimeRaw}
+                    onChange={(e) => {
+                      if (openMin == null || closeMin == null) {
+                        setEndTime(e.target.value)
+                        return
+                      }
+                      setEndTime(clampTimeStr(e.target.value, openMin, closeMin))
+                    }}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm appearance-none"
+                  />
               </div>
             </div>
+              {errors.time && <p className="text-red-500 text-xs mt-2">{errors.time}</p>}
           </div>
           <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 rounded-b-2xl shrink-0">
             <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-100 transition-colors">ยกเลิก</button>
