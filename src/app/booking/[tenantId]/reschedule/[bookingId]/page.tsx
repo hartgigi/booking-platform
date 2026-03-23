@@ -212,7 +212,10 @@ export default function ReschedulePage({ params }: ReschedulePageProps) {
       try {
         const { default: liff } = await import('@line/liff')
         if (!(liff as any).isInitialized?.()) {
-          await liff.init({ liffId: JONGME_LIFF_ID })
+          await liff.init({
+            liffId: JONGME_LIFF_ID,
+            withLoginOnExternalBrowser: false,
+          })
         }
         if (!liff.isLoggedIn()) {
           liff.login({

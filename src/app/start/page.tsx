@@ -45,7 +45,10 @@ function StartPageClient() {
         const { default: liff } = await import("@line/liff");
 
         if (!(liff as any).isInitialized?.()) {
-          await liff.init({ liffId: JONGME_LIFF_ID });
+          await liff.init({
+            liffId: JONGME_LIFF_ID,
+            withLoginOnExternalBrowser: false,
+          });
         }
 
         // ถ้ายังไม่ล็อกอิน LIFF (เช่น เปิดจากเบราว์เซอร์นอก LINE) ไม่เรียก liff.login() ที่อาจทำให้ได้ 400
