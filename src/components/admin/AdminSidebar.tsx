@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils/cn";
 import {
   LayoutDashboard,
+  Calendar,
   Scissors,
   Users,
   CreditCard,
@@ -20,9 +21,10 @@ interface AdminSidebarProps {
 }
 
 const mainNav = [
-  { href: "/admin/dashboard", label: "จัดการจอง", icon: LayoutDashboard },
+  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
 ];
 const managementNav = [
+  { href: "/admin/bookings", label: "จัดการจอง", icon: Calendar },
   { href: "/admin/services", label: "บริการ", icon: Scissors },
   { href: "/admin/staff", label: "พนักงาน", icon: Users },
   { href: "/admin/package", label: "แพ็คเกจ", icon: CreditCard },
@@ -32,7 +34,8 @@ const accountNav = [
 ];
 
 const PAGE_TITLES: Record<string, string> = {
-  "/admin/dashboard": "จัดการจอง",
+  "/admin/dashboard": "Dashboard",
+  "/admin/bookings": "จัดการจอง",
   "/admin/services": "บริการ",
   "/admin/staff": "พนักงาน",
   "/admin/package": "แพ็คเกจ",
