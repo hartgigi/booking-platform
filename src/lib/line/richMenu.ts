@@ -54,12 +54,14 @@ export async function createRichMenuForTenant(
       console.log("Failed to unlink default rich menu");
     }
 
-    const liffId = process.env.NEXT_PUBLIC_LIFF_ID || "";
-    const liffUrl = "https://liff.line.me/" + liffId + "?tenantId=" + tenantId;
+    const baseUrl =
+      (process.env.NEXT_PUBLIC_APP_URL || "https://www.jongme.com").replace(/\/$/, "");
+    const bookingUrl = `${baseUrl}/booking/${tenantId}`;
+    const contactUrl = `${baseUrl}/contact/${tenantId}`;
 
     const menuBody = JSON.parse(JSON.stringify(RICH_MENU_TEMPLATE)) as typeof RICH_MENU_TEMPLATE;
-    (menuBody.areas[0].action as { uri: string }).uri = liffUrl;
-    (menuBody.areas[2].action as { uri: string }).uri = (process.env.NEXT_PUBLIC_APP_URL || "") + "/contact/" + tenantId;
+    (menuBody.areas[0].action as { uri: string }).uri = bookingUrl;
+    (menuBody.areas[2].action as { uri: string }).uri = contactUrl;
 
     const createRes = await fetch("https://api.line.me/v2/bot/richmenu", {
       method: "POST",
