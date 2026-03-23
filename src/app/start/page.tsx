@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { JONGME_LIFF_ID } from "@/lib/line/liff";
 
 function readTenantBookingParams(searchParams: ReturnType<typeof useSearchParams>) {
   let tenantId = searchParams.get("tenantId");
@@ -26,11 +25,11 @@ function StartPageClient() {
   useEffect(() => {
     let cancelled = false;
 
-    async function run() {
+    function run() {
       if (typeof window === "undefined") return;
 
       // Rich Menu / ลิงก์ LIFF แบบ ?tenantId=... เปิดที่ Endpoint /start — ต้องไปหน้าจองลูกค้า
-      // ไม่ใช่ flow เจ้าของร้าน → admin (มิฉะนั้นกด "จองคิว" จาก OA ร้านแล้วเด้ง dashboard)
+      // ไม่ทำ admin/login fallback ที่นี่แล้ว เพื่อกันการวนเข้า LINE login โดยไม่จำเป็น
       const { tenantId: bookingTenantId, rescheduleBookingId } = readTenantBookingParams(searchParams);
       if (bookingTenantId) {
         if (rescheduleBookingId) {
@@ -40,48 +39,7 @@ function StartPageClient() {
         }
         return;
       }
-
-      try {
-        const { default: liff } = await import("@line/liff");
-
-        if (!(liff as any).isInitialized?.()) {
-          await liff.init({
-            liffId: JONGME_LIFF_ID,
-            withLoginOnExternalBrowser: false,
-          });
-        }
-
-        // ถ้ายังไม่ล็อกอิน LIFF (เช่น เปิดจากเบราว์เซอร์นอก LINE) ไม่เรียก liff.login() ที่อาจทำให้ได้ 400
-        // ส่งไปหน้ารายการแพ็กเกจแทน ตาม flow: ยังไม่สมัคร → ให้มีรายการ Package ให้เลือก
-        if (!liff.isLoggedIn()) {
-          router.replace("/contact?from=start");
-          return;
-        }
-
-        const profile = await liff.getProfile();
-        if (!profile.userId || cancelled) return;
-
-        const res = await fetch(
-          `/api/tenants/by-line?lineUserId=${encodeURIComponent(
-            profile.userId
-          )}`
-        );
-        const data = await res.json();
-
-        if (cancelled) return;
-
-        // ถ้าเป็นร้านค้าที่สมัครแล้ว → ไปหน้าเข้าสู่ระบบ (อีเมล/รหัสผ่าน)
-        if (data.exists && data.tenantId) {
-          router.replace("/admin/login");
-          return;
-        }
-
-        // ยังไม่สมัครแพ็กเกจ → ไปหน้ารายการแพ็กเกจ (ใช้ section เดิมใน /contact)
-        router.replace(`/contact?from=start`);
-      } catch (err) {
-        console.error("StartPage LIFF flow error:", err);
-        router.replace("/contact");
-      }
+      router.replace("/contact?from=start");
     }
 
     run();
