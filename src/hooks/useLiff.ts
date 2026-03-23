@@ -16,13 +16,16 @@ export function useLiff() {
   useEffect(() => {
     const initLiff = async () => {
       try {
-        await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID || '' })
-        if (!liff.isLoggedIn()) {
-          liff.login()
-          return
+        await liff.init({
+          liffId: process.env.NEXT_PUBLIC_LIFF_ID || '',
+          withLoginOnExternalBrowser: false,
+        })
+        if (liff.isLoggedIn()) {
+          const p = await liff.getProfile()
+          setProfile({ userId: p.userId, displayName: p.displayName, pictureUrl: p.pictureUrl })
+        } else {
+          setProfile(null)
         }
-        const p = await liff.getProfile()
-        setProfile({ userId: p.userId, displayName: p.displayName, pictureUrl: p.pictureUrl })
       } catch (err: any) {
         console.error('LIFF init error:', err)
         setError(err.message)

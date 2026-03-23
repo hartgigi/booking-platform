@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { JONGME_LIFF_ID, buildLiffReturnToStartUrl } from '@/lib/line/liff'
+import { JONGME_LIFF_ID } from '@/lib/line/liff'
 
 interface ReschedulePageProps {
   params: { tenantId: string; bookingId: string }
@@ -218,12 +218,10 @@ export default function ReschedulePage({ params }: ReschedulePageProps) {
           })
         }
         if (!liff.isLoggedIn()) {
-          liff.login({
-            redirectUri: buildLiffReturnToStartUrl({
-              tenantId,
-              rescheduleBookingId: bookingId,
-            }),
-          })
+          if (!cancelled) {
+            setError('กรุณาเปิดลิงก์นี้จาก LINE ที่ล็อกอินไว้')
+            setLoading(false)
+          }
           return
         }
         const profile = await liff.getProfile()
