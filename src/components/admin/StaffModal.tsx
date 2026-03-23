@@ -21,13 +21,24 @@ interface Props {
 
 const DAYS = ['จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์','อาทิตย์']
 
+function normalizeOpenDaysToStaffDays(openDays?: number[] | null): number[] {
+  if (!Array.isArray(openDays)) return []
+  const mapped = openDays
+    .map((d) => (d === 0 ? 7 : d))
+    .filter((d): d is number => Number.isInteger(d) && d >= 1 && d <= 7)
+  return Array.from(new Set(mapped)).sort((a, b) => a - b)
+}
+
 export default function StaffModal({ tenantId, staff, services, tenantDefaults, onClose, onSuccess }: Props) {
   const isEdit = !!staff
+  const allowedWorkDays = normalizeOpenDaysToStaffDays(tenantDefaults?.openDays)
+  const fallbackWorkDays = allowedWorkDays.length > 0 ? allowedWorkDays : [1, 2, 3, 4, 5]
+  const initialWorkDays = (staff?.workDays ?? fallbackWorkDays).filter((d) =>
+    fallbackWorkDays.includes(d)
+  )
   const [name, setName] = useState(staff?.name ?? '')
   const [serviceIds, setServiceIds] = useState<string[]>(staff?.serviceIds ?? [])
-  const [workDays, setWorkDays] = useState<number[]>(
-    staff?.workDays ?? tenantDefaults?.openDays ?? [1, 2, 3, 4, 5]
-  )
+  const [workDays, setWorkDays] = useState<number[]>(initialWorkDays)
   const [startTime, setStartTime] = useState(
     staff?.workStartTime ?? tenantDefaults?.openTime ?? '09:00'
   )
@@ -56,9 +67,9 @@ export default function StaffModal({ tenantId, staff, services, tenantDefaults, 
     if (!staff && tenantDefaults) {
       setStartTime(tenantDefaults.openTime)
       setEndTime(tenantDefaults.closeTime)
-      setWorkDays(tenantDefaults.openDays)
+      setWorkDays(fallbackWorkDays)
     }
-  }, [staff, tenantDefaults])
+  }, [staff, tenantDefaults, fallbackWorkDays])
 
   function toggleService(id: string) {
     setServiceIds(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id])
@@ -66,6 +77,7 @@ export default function StaffModal({ tenantId, staff, services, tenantDefaults, 
   }
 
   function toggleDay(day: number) {
+    if (!fallbackWorkDays.includes(day)) return
     setWorkDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day].sort())
   }
 
@@ -87,10 +99,11 @@ export default function StaffModal({ tenantId, staff, services, tenantDefaults, 
     setLoading(true)
     let success = false
     try {
+      const filteredWorkDays = workDays.filter((d) => fallbackWorkDays.includes(d))
       const baseData = {
         name,
         serviceIds,
-        workDays,
+        workDays: filteredWorkDays,
         workStartTime: startTime,
         workEndTime: endTime,
         isActive: true,
@@ -209,7 +222,20 @@ export default function StaffModal({ tenantId, staff, services, tenantDefaults, 
               <label className="block text-sm font-medium text-slate-700 mb-1.5">วันทำงาน</label>
               <div className="flex flex-wrap gap-2">
                 {DAYS.map((day, i) => (
-                  <button key={i} onClick={() => toggleDay(i+1)} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${workDays.includes(i+1) ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                  <button
+                    key={i}
+                    type="button"
+                    disabled={!fallbackWorkDays.includes(i + 1)}
+                    onClick={() => toggleDay(i + 1)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      !fallbackWorkDays.includes(i + 1)
+                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-60'
+                        : workDays.includes(i + 1)
+                          ? 'bg-teal-600 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                    title={!fallbackWorkDays.includes(i + 1) ? 'ร้านปิดวันนี้' : undefined}
+                  >
                     {day}
                   </button>
                 ))}
