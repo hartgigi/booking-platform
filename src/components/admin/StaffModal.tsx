@@ -145,14 +145,17 @@ export default function StaffModal({ tenantId, staff, services, tenantDefaults, 
           padding: '0 16px',
         }}
       >
-        <div className="bg-white rounded-2xl shadow-2xl w-full overflow-hidden">
+        <div
+          className="bg-white rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col"
+          style={{ maxHeight: "85vh" }}
+        >
           <div className="bg-linear-to-r from-teal-600 to-cyan-500 px-6 py-4 flex items-center justify-between rounded-t-2xl">
             <h2 className="text-white font-semibold text-lg">{isEdit ? 'แก้ไขพนักงาน' : 'เพิ่มพนักงาน'}</h2>
             <button onClick={onClose} className="text-white/80 hover:text-white transition-colors">
               <X size={20} />
             </button>
           </div>
-          <div className="p-6 space-y-4">
+          <div className="p-6 space-y-4 overflow-y-auto flex-1" style={{ WebkitOverflowScrolling: "touch" }}>
             <div className="flex flex-col items-center gap-3">
               <input
                 ref={fileInputRef}
@@ -223,7 +226,7 @@ export default function StaffModal({ tenantId, staff, services, tenantDefaults, 
               </div>
             </div>
           </div>
-          <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 rounded-b-2xl">
+          <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 rounded-b-2xl shrink-0">
             <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-100 transition-colors">ยกเลิก</button>
             <button onClick={handleSubmit} disabled={loading} className="px-5 py-2.5 rounded-xl bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 transition-colors disabled:opacity-50">
               {loading ? 'กำลังบันทึก...' : isEdit ? 'บันทึก' : 'เพิ่ม'}
