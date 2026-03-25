@@ -40,13 +40,23 @@ export default function StaffModal({ tenantId, staff, services, tenantDefaults, 
   const openTimeRaw = tenantDefaults?.openTime ?? "09:00"
   const closeTimeRaw = tenantDefaults?.closeTime ?? "18:00"
 
-  function timeToMinutes(t: string): number | null {
-    const m = /^(\d{1,2}):(\d{2})$/.exec(t)
+  function normalizeTimeHHmm(t: string): string | null {
+    // รองรับรูปแบบ: H:mm, HH:mm, H:mm:ss, HH:mm:ss
+    const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(t.trim())
     if (!m) return null
     const h = Number(m[1])
-    const min = Number(m[2])
-    if (Number.isNaN(h) || Number.isNaN(min)) return null
-    return h * 60 + min
+    const mm = Number(m[2])
+    if (Number.isNaN(h) || Number.isNaN(mm)) return null
+    if (h < 0 || h > 23) return null
+    if (mm < 0 || mm > 59) return null
+    return `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`
+  }
+
+  function timeToMinutes(t: string): number | null {
+    const norm = normalizeTimeHHmm(t)
+    if (!norm) return null
+    const [hh, mm] = norm.split(":").map((x) => Number(x))
+    return hh * 60 + mm
   }
 
   function minutesToTime(min: number): string {
@@ -55,8 +65,10 @@ export default function StaffModal({ tenantId, staff, services, tenantDefaults, 
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
   }
 
-  const openMin = timeToMinutes(openTimeRaw)
-  const closeMin = timeToMinutes(closeTimeRaw)
+  const openTimeNorm = normalizeTimeHHmm(openTimeRaw)
+  const closeTimeNorm = normalizeTimeHHmm(closeTimeRaw)
+  const openMin = openTimeNorm ? timeToMinutes(openTimeNorm) : null
+  const closeMin = closeTimeNorm ? timeToMinutes(closeTimeNorm) : null
 
   function clampTimeStr(t: string, minMinutes: number, maxMinutes: number): string {
     const m = timeToMinutes(t)
@@ -287,8 +299,8 @@ export default function StaffModal({ tenantId, staff, services, tenantDefaults, 
                   <input
                     type="time"
                     value={startTime}
-                    min={openTimeRaw}
-                    max={closeTimeRaw}
+                    min={openTimeNorm ?? undefined}
+                    max={closeTimeNorm ?? undefined}
                     onChange={(e) => {
                       if (openMin == null || closeMin == null) {
                         setStartTime(e.target.value)
@@ -304,8 +316,8 @@ export default function StaffModal({ tenantId, staff, services, tenantDefaults, 
                   <input
                     type="time"
                     value={endTime}
-                    min={openTimeRaw}
-                    max={closeTimeRaw}
+                    min={openTimeNorm ?? undefined}
+                    max={closeTimeNorm ?? undefined}
                     onChange={(e) => {
                       if (openMin == null || closeMin == null) {
                         setEndTime(e.target.value)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -10,6 +10,7 @@ import { z } from "zod";
 import { signUp, signOut } from "@/lib/firebase/auth";
 import FloatingInput from "@/components/ui/FloatingInput";
 import { cn } from "@/lib/utils/cn";
+import { PACKAGES } from "@/lib/packages";
 import {
   LayoutGrid,
   Bell,
@@ -51,11 +52,35 @@ const schema = z
 type FormData = z.infer<typeof schema>;
 
 function RegisterClient() {
-  const [step, setStep] = useState(1);
+  // 0 = เลือกแพ็กเกจ/Trial, 1 = ข้อมูลร้าน, 2 = อีเมล/รหัสผ่าน
+  const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [paymentInfo, setPaymentInfo] = useState<{ qrUrl: string; amount: number } | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
+  const trialFromQuery = searchParams.get("trial") === "true";
+  const packageFromQuery = searchParams.get("package");
+
+  const [selectedTrial, setSelectedTrial] = useState<boolean>(false);
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (trialFromQuery) {
+      setSelectedTrial(true);
+      setSelectedPackageId(null);
+      setStep(1);
+      return;
+    }
+    if (packageFromQuery) {
+      setSelectedTrial(false);
+      setSelectedPackageId(packageFromQuery);
+      setStep(1);
+      return;
+    }
+    setSelectedTrial(false);
+    setSelectedPackageId(null);
+    setStep(0);
+  }, [trialFromQuery, packageFromQuery]);
   const {
     control,
     register,
@@ -82,10 +107,13 @@ function RegisterClient() {
   async function onSubmit(data: FormData) {
     setError(null);
     try {
-      const isTrial =
-        (typeof window !== "undefined"
-          ? new URLSearchParams(window.location.search).get("trial")
-          : searchParams.get("trial")) === "true";
+      const isTrial = selectedTrial;
+      const packageId = selectedPackageId ?? "";
+
+      if (!isTrial && !packageId) {
+        setError("กรุณาเลือกแพ็กเกจก่อนดำเนินการสมัครสมาชิก");
+        return;
+      }
 
       const userCredential = await signUp(data.email, data.password);
       const idToken = await userCredential.user.getIdToken();
@@ -124,38 +152,32 @@ function RegisterClient() {
         return;
       }
 
-      // สมัครจากหน้าเลือกแพ็คเกจแบบเสียเงิน -> สร้าง QR Omise สำหรับชำระค่ารายเดือน
-      const packageId =
-        (typeof window !== "undefined"
-          ? new URLSearchParams(window.location.search).get("package")
-          : searchParams.get("package")) || "";
-      if (packageId) {
-        try {
-          const checkoutRes = await fetch("/api/admin/package/omise-checkout", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${idToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ packageId }),
-          });
-          const checkoutJson = await checkoutRes.json().catch(() => ({}));
-          if (!checkoutRes.ok || !checkoutJson.qrUrl) {
-            setError(
-              checkoutJson.error ||
-                "ไม่สามารถสร้างคำขอชำระเงินสำหรับแพ็คเกจได้ กรุณาลองใหม่หรือติดต่อทีมงาน"
-            );
-            return;
-          }
-          setPaymentInfo({
-            qrUrl: checkoutJson.qrUrl as string,
-            amount: checkoutJson.amount as number,
-          });
-          return;
-        } catch (e) {
-          setError("ไม่สามารถเชื่อมต่อระบบ Omise ได้ กรุณาลองใหม่");
+      // สมัครจากแพ็คเกจแบบเสียเงิน -> สร้าง QR Omise สำหรับชำระค่ารายเดือน
+      try {
+        const checkoutRes = await fetch("/api/admin/package/omise-checkout", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ packageId }),
+        });
+        const checkoutJson = await checkoutRes.json().catch(() => ({}));
+        if (!checkoutRes.ok || !checkoutJson.qrUrl) {
+          setError(
+            checkoutJson.error ||
+              "ไม่สามารถสร้างคำขอชำระเงินสำหรับแพ็คเกจได้ กรุณาลองใหม่หรือติดต่อทีมงาน"
+          );
           return;
         }
+        setPaymentInfo({
+          qrUrl: checkoutJson.qrUrl as string,
+          amount: checkoutJson.amount as number,
+        });
+        return;
+      } catch (e) {
+        setError("ไม่สามารถเชื่อมต่อระบบ Omise ได้ กรุณาลองใหม่");
+        return;
       }
 
       // กรณีทั่วไป (มาจากที่อื่น)
@@ -278,6 +300,71 @@ function RegisterClient() {
                 className="rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3"
               >
                 {error}
+              </div>
+            )}
+            {step === 0 && (
+              <div className="space-y-5 animate-fade-in">
+                <div>
+                  <h3 className="text-2xl font-semibold text-slate-900 mb-1">เลือกแพ็กเกจ</h3>
+                  <p className="text-slate-500 text-sm">
+                    ต้องเลือกแพ็กเกจก่อน ถึงจะดำเนินการสมัครสมาชิกได้
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTrial(true);
+                      setSelectedPackageId(null);
+                    }}
+                    className={cn(
+                      "w-full rounded-xl border px-4 py-3 text-left transition-colors",
+                      selectedTrial
+                        ? "border-teal-500 bg-teal-50"
+                        : "border-slate-200 bg-white hover:bg-slate-50"
+                    )}
+                  >
+                    <div className="font-semibold text-slate-900">Trial 15 วัน</div>
+                    <div className="text-sm text-slate-500 mt-1">
+                      ใช้งานแบบทดลองก่อน 15 วัน
+                    </div>
+                  </button>
+
+                  {PACKAGES.map((pkg) => {
+                    const selected = !selectedTrial && selectedPackageId === pkg.id;
+                    return (
+                      <button
+                        key={pkg.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedTrial(false);
+                          setSelectedPackageId(pkg.id);
+                        }}
+                        className={cn(
+                          "w-full rounded-xl border px-4 py-3 text-left transition-colors",
+                          selected
+                            ? "border-teal-500 bg-teal-50"
+                            : "border-slate-200 bg-white hover:bg-slate-50"
+                        )}
+                      >
+                        <div className="font-semibold text-slate-900">{pkg.name}</div>
+                        <div className="text-sm text-slate-500 mt-1">
+                          {pkg.duration} · ฿{pkg.price.toLocaleString()}/เดือน
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  disabled={!selectedTrial && !selectedPackageId}
+                  className="w-full rounded-lg bg-teal-600 py-3 px-4 font-medium text-white hover:bg-teal-700 focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  ถัดไป
+                </button>
               </div>
             )}
             {step === 1 && (
