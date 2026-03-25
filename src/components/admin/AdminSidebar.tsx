@@ -18,6 +18,7 @@ import {
 interface AdminSidebarProps {
   tenantName: string;
   plan?: string;
+  licenseExpiry?: string | null;
 }
 
 const mainNav = [
@@ -60,10 +61,27 @@ const PLAN_LABELS: Record<string, string> = {
   enterprise: "Enterprise",
 };
 
-export function AdminSidebar({ tenantName, plan = "trial" }: AdminSidebarProps) {
+function formatThaiDate(dateIso: string): string | null {
+  const d = new Date(dateIso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("th-TH", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+export function AdminSidebar({
+  tenantName,
+  plan = "trial",
+  licenseExpiry,
+}: AdminSidebarProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const pageTitle = PAGE_TITLES[pathname] ?? "Dashboard";
+
+  const expiryFormatted = licenseExpiry ? formatThaiDate(licenseExpiry) : null;
+  const isExpired = licenseExpiry ? new Date(licenseExpiry).getTime() <= Date.now() : false;
 
   async function handleLogout() {
     await fetch("/api/auth/session", { method: "DELETE" });
@@ -166,6 +184,10 @@ export function AdminSidebar({ tenantName, plan = "trial" }: AdminSidebarProps) 
                 <span className="inline-block mt-0.5 px-2 py-0.5 rounded-md bg-slate-700 text-slate-300 text-xs font-medium">
                   {PLAN_LABELS[plan] ?? plan}
                 </span>
+                  <p className="text-[11px] text-slate-300 mt-1 leading-tight break-words">
+                    หมดอายุ: {expiryFormatted ?? "—"}
+                    {isExpired && expiryFormatted ? " (หมดอายุแล้ว)" : ""}
+                  </p>
               </div>
             </div>
             <button

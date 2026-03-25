@@ -46,7 +46,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-slate-50 admin-theme">
-      <AdminSidebar tenantName={tenantName} plan={plan} />
+      <AdminSidebar tenantName={tenantName} plan={plan} licenseExpiry={licenseExpiry} />
       <main className="lg:pl-[260px] pt-14 min-h-screen relative">
         {children}
         {showExpiryDialog && (

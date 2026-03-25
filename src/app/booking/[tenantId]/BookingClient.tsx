@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { JONGME_LIFF_ID } from '@/lib/line/liff'
 
 interface Service {
@@ -147,6 +148,7 @@ const styles = {
 }
 
 export default function BookingClient({ tenantId, initialTenant, initialServices, initialStaff }: BookingClientProps) {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [tenant, setTenant] = useState<TenantInfo | null>(initialTenant as TenantInfo | null)
@@ -365,16 +367,11 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
         </div>
         <button
           onClick={() => {
-            setCurrentStep(0)
-            setSelectedService(null)
-            setSelectedStaff(null)
-            setSelectedDate('')
-            setSelectedTime('')
-            setBookingSuccess(false)
+            router.push(`/booking/${tenantId}/my-bookings`)
           }}
           style={{ ...styles.button(false), marginTop: 24, maxWidth: 480 }}
         >
-          กลับหน้าหลัก
+          ดูรายการจองของฉัน
         </button>
       </div>
     )
