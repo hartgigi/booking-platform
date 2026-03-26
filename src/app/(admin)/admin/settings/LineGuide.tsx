@@ -24,48 +24,49 @@ type GuideStep = {
 /** ส่วน ก — สร้าง LINE OA (ข้อความอย่างเดียว ไม่มีรูปในระบบ) */
 const STEPS_CREATE_OA: GuideStep[] = [
   {
-    title: "ส่วน ก — ขั้นที่ 1 — เข้า LINE Official Account Manager",
+    title: "ขั้นตอนที่ 1: เข้าสู่ LINE Official Account Manager",
     lines: [
-      "เปิด https://manager.line.biz/ ในเบราว์เซอร์ (หรือใช้แอป LINE Official Account)",
-      "ล็อกอินด้วยบัญชี LINE ที่จะเป็นเจ้าของ OA ร้าน",
-      "ถ้ายังไม่เคยใช้ อาจต้องสร้างบัญชีผู้ดูแล / ยอมรับเงื่อนไขก่อน",
+      "เปิด https://manager.line.biz/ (หรือแอป LINE Official Account)",
+      "ล็อกอินด้วยบัญชี LINE ที่ต้องการใช้ดูแล OA ร้าน",
+      "หากระบบถามยืนยันสิทธิ์/เงื่อนไข ให้กดยอมรับให้ครบ",
     ],
-    tip: "ถ้าไม่เจอเมนู ให้ค้นหาคำว่า LINE Official Account Manager หรือ manager.line.biz",
+    tip: "ผลลัพธ์ที่ควรเห็น: เข้าหน้าจัดการ OA ได้สำเร็จ",
   },
   {
-    title: "ส่วน ก — ขั้นที่ 2 — สร้างบัญชี OA ใหม่",
+    title: "ขั้นตอนที่ 2: สร้างบัญชี OA ใหม่",
     lines: [
-      "กดสร้างบัญชีทางการ / Create / เพิ่มบัญชี (ชื่อปุ่มอาจต่างกัน)",
-      "กรอกชื่อร้าน ประเภทธุรกิจ และข้อมูลที่หน้าจอขอให้ครบ",
-      "ทำตามขั้นตอนจนสร้าง OA เสร็จ",
+      "กดปุ่มสร้างบัญชีทางการ / Create / เพิ่มบัญชี (ชื่อปุ่มอาจต่างกัน)",
+      "กรอกข้อมูลร้าน เช่น ชื่อร้าน ประเภทธุรกิจ และข้อมูลพื้นฐานให้ครบ",
+      "กดถัดไปตามขั้นตอนจนระบบแจ้งว่าสร้าง OA สำเร็จ",
     ],
-    tip: "ภาษาไทย/อังกฤษได้หมด ขอให้จบขั้นตอนจนขึ้นว่าสร้างสำเร็จ",
+    tip: "ผลลัพธ์ที่ควรเห็น: มี OA ร้านของคุณใน LINE OA Manager",
   },
   {
-    title: "ส่วน ก — ขั้นที่ 3 — หลังสร้าง OA สำเร็จ",
+    title: "ขั้นตอนที่ 3: ตรวจสอบ OA หลังสร้างเสร็จ",
     lines: [
-      "คุณควรเห็นหน้าแดชบอร์ด / ตั้งค่าของ OA ร้าน",
-      "ทดสอบให้ลูกค้า Add friend ได้ (ถ้ามี QR หรือลิงก์)",
-      "จำชื่อ OA ไว้ — จะใช้หา channel ใน Developers ภายหลัง",
+      "ตรวจสอบว่าเข้าแดชบอร์ด OA ร้านได้",
+      "ทดสอบ Add friend/เปิดแชท OA ได้ตามปกติ",
+      "จดชื่อ OA ร้านไว้ เพื่อใช้ตรวจสอบตอนเชื่อมกับ Developers",
     ],
+    tip: "หากยัง Add friend ไม่ได้ ให้แก้ตรง OA ให้เรียบร้อยก่อนค่อยไปขั้นถัดไป",
   },
   {
-    title: "ส่วน ก — ขั้นที่ 4 — เข้า LINE Developers สร้าง Provider",
+    title: "ขั้นตอนที่ 4: เข้า LINE Developers และสร้าง Provider",
     lines: [
-      "เปิด https://developers.line.biz/console/ แล้วล็อกอินด้วย LINE (แนะนำบัญชีเดียวกับแอดมิน OA)",
-      "ถ้ายังไม่มี Provider ให้กดสร้าง Provider ใหม่ ตั้งชื่อทีมหรือร้าน",
-      "เข้าไปใน Provider ที่สร้างแล้ว",
+      "เปิด https://developers.line.biz/console/ แล้วล็อกอิน",
+      "ถ้ายังไม่มี Provider ให้กด Create Provider",
+      "ตั้งชื่อ Provider (เช่น ชื่อร้าน/ชื่อทีม) แล้วกดบันทึก",
     ],
-    tip: "ถ้า LINE ให้ “เชื่อม” หรือ “เพิ่ม” OA เข้า Provider ให้ทำตามหน้าจอ",
+    tip: "แนะนำใช้บัญชี LINE เดียวกับที่สร้าง OA เพื่อลดปัญหาไม่เห็น Channel",
   },
   {
-    title: "ส่วน ก — ขั้นที่ 5 — ให้มี Channel ของ OA ใน Console",
+    title: "ขั้นตอนที่ 5: ตรวจสอบ Channel ของ OA ใน Console",
     lines: [
-      "ใน Provider ควรเห็น Channel ที่เชื่อมกับ OA ร้านคุณ (มักมีคำว่า Messaging API หรือ Official Account)",
-      "ถ้ายังไม่มีรายการ: ใช้ปุ่ม Add / Create / เชื่อม LINE Official Account ตามที่ LINE แสดง",
-      "คลิกเข้า Channel นั้น — ต่อไปจะไปส่วน “เชื่อมต่อ JongMe” เหมือนแท็บ “มี OA แล้ว”",
+      "เข้า Provider แล้วดูว่ามี Channel ของ OA ร้าน (Messaging API / Official Account)",
+      "ถ้ายังไม่เห็น ให้กด Add / Create เพื่อเชื่อม OA เข้ากับ Provider",
+      "เมื่อเห็นแล้ว ให้กดเข้า Channel นั้นเพื่อทำการเชื่อมต่อ JongMe ต่อ",
     ],
-    tip: "ถ้าติดขัดที่ขั้นนี้ ให้ดูคู่มือ LINE เรื่องเชื่อม OA กับ Developers หรือติดต่อ LINE",
+    tip: "ผลลัพธ์ที่ควรเห็น: เข้าไปหน้า Channel ของ OA ร้านได้",
   },
 ];
 
@@ -73,73 +74,76 @@ const STEPS_CREATE_OA: GuideStep[] = [
 const STEPS_CONNECT: GuideStep[] = [
   {
     file: "01-console-home.png",
-    title: "ส่วน ข — ขั้นที่ 1 — เข้า LINE Developers Console",
+    title: "เชื่อมต่อ JongMe — ขั้นที่ 1: เข้า LINE Developers Console",
     lines: [
-      "ชื่อไฟล์รูปที่ต้องใส่: 01-console-home.png",
-      "เปิด developers.line.biz/console แล้วล็อกอินด้วย LINE",
-      "เลือก Provider → เลือก Channel ของ OA ร้าน (มี Messaging API)",
+      "เปิด developers.line.biz/console แล้วล็อกอิน",
+      "เลือก Provider ของร้านที่ต้องการเชื่อม",
+      "เลือก Channel ของ OA ร้าน (Messaging API)",
     ],
-    tip: "ถ้าไม่เห็น ให้ค้นหาคำว่า Console หรือ Provider",
+    tip: "ต้องเข้าให้ถูก Provider ก่อน ถ้าผิดจะหา Channel ไม่เจอ",
   },
   {
     file: "02-channel-list.png",
-    title: "ส่วน ข — ขั้นที่ 2 — ยืนยันว่าเลือก Channel ถูกตัว",
+    title: "เชื่อมต่อ JongMe — ขั้นที่ 2: เลือก Channel ให้ถูกต้อง",
     lines: [
-      "ชื่อไฟล์รูปที่ต้องใส่: 02-channel-list.png",
-      "ในรายการ Channel ให้เลือกตัวที่ลูกค้าทักแชทร้านใน LINE",
-      "ไม่ใช่ channel แบบ LINE Login ของแอปอื่น",
+      "เลือก Channel ที่ลูกค้าใช้ทักแชท OA ร้านจริง",
+      "อย่าเลือก Channel ที่เป็น LINE Login ของระบบอื่น",
+      "ตรวจชื่อ Channel ให้ตรงกับ OA ร้านของคุณ",
     ],
     tip: "ถ้ามีหลาย channel ให้เลือกตัวที่เป็น OA ร้านคุณ",
   },
   {
     file: "03-open-messaging-api-tab.png",
-    title: "ส่วน ข — ขั้นที่ 3 — เปิดหน้า Channel",
+    title: "เชื่อมต่อ JongMe — ขั้นที่ 3: เปิดแท็บที่ต้องใช้",
     lines: [
-      "ชื่อไฟล์รูปที่ต้องใส่: 03-open-messaging-api-tab.png",
-      "หลังเข้า channel แล้ว ดูแท็บด้านบน: Basic settings, Messaging API, LIFF ฯลฯ",
-      "ร้านค้าใช้แท็บ Messaging API + Basic settings เป็นหลัก",
+      "เมื่อเข้า Channel แล้ว ให้เตรียมใช้งาน 2 แท็บ: Basic settings และ Messaging API",
+      "ขั้นตอนนี้ยังไม่ต้องตั้งค่า LIFF",
+      "ตรวจว่าคุณอยู่ใน Channel เดิมตลอดขั้นตอน",
     ],
   },
   {
     file: "04-basic-settings-secret.png",
-    title: "ส่วน ข — ขั้นที่ 4 — คัดลอก Channel secret",
+    title: "เชื่อมต่อ JongMe — ขั้นที่ 4: คัดลอก Channel secret",
     lines: [
-      "ชื่อไฟล์รูปที่ต้องใส่: 04-basic-settings-secret.png",
       "เปิดแท็บ Basic settings",
-      "หา Channel secret → แสดงค่า → คัดลอก → วางในช่อง Channel Secret ใน JongMe",
+      "หา Channel secret แล้วกดแสดงค่า/คัดลอก",
+      "กลับไปหน้า ตั้งค่าร้าน ของ JongMe แล้ววางในช่อง Channel Secret",
+      "อย่าเผลอคัดลอกจาก Channel อื่น",
     ],
     tip: "Secret กับ Channel ต้องเป็นคู่เดียวกัน",
   },
   {
     file: "05-messaging-api-webhook.png",
-    title: "ส่วน ข — ขั้นที่ 5 — ตั้ง Webhook",
+    title: "เชื่อมต่อ JongMe — ขั้นที่ 5: ตั้งค่า Webhook",
     lines: [
-      "ชื่อไฟล์รูปที่ต้องใส่: 05-messaging-api-webhook.png",
       "เปิดแท็บ Messaging API",
       "เปิด Use webhook เป็น ON",
-      "วาง Webhook URL จากกล่องสีเขียวด้านล่าง (กดคัดลอก)",
-      "กด Update ถ้ามี แล้วกด Verify",
+      "คัดลอก Webhook URL จากหน้า JongMe แล้ววางใน LINE",
+      "กด Update (ถ้ามี) แล้วกด Verify ให้ผ่าน",
+      "ถ้า Verify ไม่ผ่าน ให้ตรวจ URL และ Channel secret อีกครั้ง",
     ],
     tip: "URL ต้องตรงทุกตัวอักษรกับที่ JongMe แสดง",
   },
   {
     file: "06-messaging-api-token.png",
-    title: "ส่วน ข — ขั้นที่ 6 — สร้าง Channel access token",
+    title: "เชื่อมต่อ JongMe — ขั้นที่ 6: สร้าง Channel access token",
     lines: [
-      "ชื่อไฟล์รูปที่ต้องใส่: 06-messaging-api-token.png",
-      "ยังในแท็บ Messaging API",
+      "อยู่ในแท็บ Messaging API",
       "หา Channel access token (long-lived) → กด Issue",
-      "คัดลอก token ทั้งก้อน → วางในช่อง Channel Access Token ใน JongMe",
+      "คัดลอก token ทั้งก้อนให้ครบ",
+      "กลับไปหน้า ตั้งค่าร้าน ของ JongMe แล้ววางในช่อง Channel Access Token",
     ],
-    tip: "ค้นคำว่า Issue หรือ long-lived บนหน้า",
+    tip: "หากมี token เดิม ให้ใช้ตัวล่าสุดที่กด Issue",
   },
   {
-    title: "ส่วน ข — ขั้นที่ 7 — ใน JongMe",
+    title: "เชื่อมต่อ JongMe — ขั้นที่ 7: ทดสอบจากหน้า JongMe",
     lines: [
-      "บันทึกการตั้งค่า (ถ้ามี)",
-      "กด ทดสอบ — ควรผ่าน",
-      "จากนั้นค่อยสร้าง Rich Menu ตามปุ่มในหน้าตั้งค่า",
+      "กดบันทึกการตั้งค่า",
+      "กดปุ่ม ทดสอบ (ควรขึ้นสำเร็จ)",
+      "จากนั้นกด สร้าง/รีเฟรช Rich Menu",
+      "เข้า LINE OA แล้วลองกดเมนูจองคิวเพื่อตรวจสอบอีกครั้ง",
     ],
+    tip: "ผลลัพธ์ที่ควรเห็น: LINE แจ้งเตือนและเมนูใช้งานได้ตามปกติ",
   },
 ];
 
@@ -313,14 +317,6 @@ export function LineGuide({ open, onClose, webhookUrl }: LineGuideProps) {
                 ข้ามไปเชื่อมต่อ JongMe
               </span>
             </button>
-          </div>
-
-          <div className="rounded-xl border border-amber-200 bg-amber-50/90 p-3 text-[11px] leading-relaxed text-amber-950">
-            <p className="font-semibold mb-1">สำคัญ</p>
-            <ul className="list-disc list-inside space-y-1">
-              <li>ส่วนเชื่อมต่อ JongMe ใช้ Channel <strong>Messaging API ของ OA ร้าน</strong></li>
-              <li>ไม่ใช่ Channel แบบ LINE Login ของระบบอื่น</li>
-            </ul>
           </div>
 
           {track === "from_zero" && (
