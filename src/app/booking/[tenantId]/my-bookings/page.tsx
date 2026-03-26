@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import liff from '@line/liff'
-import { JONGME_LIFF_ID } from '@/lib/line/liff'
 import { db } from '@/lib/firebase/client'
 import type { Booking, BookingStatus } from '@/types'
 import {
@@ -15,6 +13,11 @@ import {
 import { Calendar, ArrowLeft } from 'lucide-react'
 
 type TabKey = 'upcoming' | 'history' | 'all'
+const CUSTOMER_ID_STORAGE_KEY_PREFIX = 'booking_customer_id:'
+
+function getCustomerStorageKey(tenantId: string): string {
+  return `${CUSTOMER_ID_STORAGE_KEY_PREFIX}${tenantId}`
+}
 
 function statusLabel(status: BookingStatus): string {
   switch (status) {
@@ -83,38 +86,23 @@ export default function MyBookingsPage({ params }: { params: { tenantId: string 
   const router = useRouter()
   const { tenantId } = params
 
-  const [lineUserId, setLineUserId] = useState<string | null>(null)
+  const [customerId, setCustomerId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<TabKey>('upcoming')
   const [bookings, setBookings] = useState<Booking[]>([])
 
   useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        await liff.init({ liffId: JONGME_LIFF_ID, withLoginOnExternalBrowser: false })
-        if (!liff.isLoggedIn()) {
-          if (!cancelled) setLineUserId(null)
-          return
-        }
-        const profile = await liff.getProfile()
-        if (!cancelled) setLineUserId(profile.userId)
-      } catch {
-        if (!cancelled) setLineUserId(null)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    if (typeof window === 'undefined') return
+    const stored = window.localStorage.getItem(getCustomerStorageKey(tenantId))
+    setCustomerId(stored || null)
+    setLoading(false)
+  }, [tenantId])
 
   useEffect(() => {
-    if (!lineUserId) return
+    if (!customerId) return
     const q = query(
       collection(db, 'tenants', tenantId, 'bookings'),
-      where('customerLineId', '==', lineUserId)
+      where('customerLineId', '==', customerId)
     )
 
     const unsub = onSnapshot(q, (snap) => {
@@ -129,7 +117,7 @@ export default function MyBookingsPage({ params }: { params: { tenantId: string 
     })
 
     return () => unsub()
-  }, [lineUserId, tenantId])
+  }, [customerId, tenantId])
 
   const filtered = useMemo(() => {
     if (tab === 'all') return bookings
@@ -160,9 +148,9 @@ export default function MyBookingsPage({ params }: { params: { tenantId: string 
       </header>
 
       <div className="px-4 pt-4 pb-24">
-        {!loading && !lineUserId && (
+        {!loading && !customerId && (
           <div className="rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm p-4 mb-4">
-            กรุณาเปิดหน้านี้จาก LINE ที่ล็อกอินอยู่ก่อน เพื่อให้ระบบดึงประวัติการจองได้
+            ยังไม่พบประวัติการจองบนอุปกรณ์นี้ กรุณาจองคิวก่อนอย่างน้อย 1 ครั้ง
           </div>
         )}
 

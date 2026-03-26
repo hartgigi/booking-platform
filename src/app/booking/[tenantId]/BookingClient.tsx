@@ -27,6 +27,19 @@ interface BookingClientProps {
   initialStaff: any[]
 }
 
+const CUSTOMER_ID_STORAGE_KEY_PREFIX = 'booking_customer_id:'
+
+function getCustomerStorageKey(tenantId: string): string {
+  return `${CUSTOMER_ID_STORAGE_KEY_PREFIX}${tenantId}`
+}
+
+function createGuestCustomerId(): string {
+  if (typeof window !== 'undefined' && window.crypto?.randomUUID) {
+    return `guest-${window.crypto.randomUUID()}`
+  }
+  return `guest-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
 const styles = {
   page: { minHeight: '100vh', backgroundColor: '#F9FAFB', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' },
   header: { position: 'sticky' as const, top: 0, zIndex: 50, backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '12px 16px' },
@@ -166,14 +179,28 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
   const [depositTotal, setDepositTotal] = useState(0)
   const [manualDeposit, setManualDeposit] = useState<any>(null)
   const [liffProfile, setLiffProfile] = useState<any>(null)
+  const [customerId, setCustomerId] = useState<string>('')
+  const [customerDisplayName, setCustomerDisplayName] = useState<string>('ลูกค้า')
 
   const steps = ['เลือกบริการ', 'เลือกช่าง', 'เลือกวัน/เวลา', 'ยืนยันการจอง']
 
-  // ถ้าเปิดใน LINE และล็อกอินแล้ว จะผูก lineUserId กับการจอง — ไม่บังคับ login (ลูกค้าจองเป็น guest ได้, ลด 400 จาก OAuth)
+  // ไม่บังคับ LINE login:
+  // - ถ้าอยู่ใน LINE และล็อกอินอยู่ ใช้ LINE userId
+  // - ถ้าไม่ล็อกอิน ใช้ guest id ที่เก็บใน localStorage ต่อ tenant
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       if (typeof window === 'undefined') return
+      const storageKey = getCustomerStorageKey(tenantId)
+      const existingGuestId = window.localStorage.getItem(storageKey)
+      if (existingGuestId && !cancelled) {
+        setCustomerId(existingGuestId)
+      } else if (!cancelled) {
+        const generated = createGuestCustomerId()
+        window.localStorage.setItem(storageKey, generated)
+        setCustomerId(generated)
+      }
+
       try {
         const liffModule = await import('@line/liff')
         const liff = liffModule.default
@@ -185,7 +212,11 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
         }
         if (liff.isLoggedIn()) {
           const profile = await liff.getProfile()
-          if (!cancelled) setLiffProfile(profile)
+          if (!cancelled) {
+            setLiffProfile(profile)
+            setCustomerId(profile.userId)
+            setCustomerDisplayName(profile.displayName || 'ลูกค้า')
+          }
         }
       } catch (err) {
         console.error('LIFF init error:', err)
@@ -194,7 +225,7 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [tenantId])
 
   useEffect(() => {
     if (!selectedDate || !selectedService || !tenantId) return
@@ -234,8 +265,8 @@ export default function BookingClient({ tenantId, initialTenant, initialServices
     if (!selectedService || !selectedDate || !selectedTime) return
     setSubmitting(true)
 
-    const lineUserId = liffProfile?.userId || 'guest'
-    const lineDisplayName = liffProfile?.displayName || 'ลูกค้า'
+    const lineUserId = customerId || 'guest'
+    const lineDisplayName = customerDisplayName || 'ลูกค้า'
 
     if (selectedService.depositAmount > 0) {
       try {

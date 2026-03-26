@@ -61,6 +61,7 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
   const [promptPayNumber, setPromptPayNumber] = useState(
     initialTenant.promptPayNumber ?? ""
   );
+  const [paymentValidationError, setPaymentValidationError] = useState<string | null>(null);
   const [creatingMenu, setCreatingMenu] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testingLine, setTestingLine] = useState(false);
@@ -162,6 +163,23 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
         ? window.localStorage.getItem(FIREBASE_TOKEN_KEY)
         : null;
     if (!token) return;
+
+    if (depositMode === "auto") {
+      const missingFields: string[] = [];
+      if (!bankName.trim()) missingFields.push("ชื่อธนาคาร");
+      if (!bankAccountNumber.trim()) missingFields.push("เลขบัญชี");
+      if (!bankAccountName.trim()) missingFields.push("ชื่อบัญชี");
+      if (!promptPayNumber.trim()) missingFields.push("เบอร์ PromptPay");
+
+      if (missingFields.length > 0) {
+        const msg = `โหมดตรวจสอบอัตโนมัติ ต้องกรอกข้อมูลรับเงินให้ครบ: ${missingFields.join(", ")}`;
+        setPaymentValidationError(msg);
+        errorToast(msg);
+        return;
+      }
+    }
+
+    setPaymentValidationError(null);
     setSaving(true);
     try {
       console.log("Saving bank settings:", {
@@ -448,6 +466,11 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
             <p className="text-xs text-slate-500">
               ข้อมูลนี้จะแสดงให้ลูกค้าเห็นตอนจ่ายมัดจำ (สำหรับโหมดตรวจสอบเอง)
             </p>
+              {paymentValidationError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 text-xs px-3 py-2">
+                  {paymentValidationError}
+                </div>
+              )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">
@@ -455,8 +478,16 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
                 </label>
                 <select
                   value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    onChange={(e) => {
+                      setBankName(e.target.value);
+                      if (paymentValidationError) setPaymentValidationError(null);
+                    }}
+                    className={cn(
+                      "w-full rounded-xl border bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500",
+                      depositMode === "auto" && !bankName.trim()
+                        ? "border-red-300"
+                        : "border-slate-200"
+                    )}
                 >
                   <option value="">เลือกธนาคาร</option>
                   <option value="กสิกรไทย">กสิกรไทย</option>
@@ -472,20 +503,29 @@ export function SettingsClient({ tenant: initialTenant }: SettingsClientProps) {
                 label="เลขบัญชี"
                 type="text"
                 value={bankAccountNumber}
-                onChange={setBankAccountNumber}
+                onChange={(v) => {
+                  setBankAccountNumber(v);
+                  if (paymentValidationError) setPaymentValidationError(null);
+                }}
               />
               <FloatingInput
                 label="ชื่อบัญชี"
                 type="text"
                 value={bankAccountName}
-                onChange={setBankAccountName}
+                onChange={(v) => {
+                  setBankAccountName(v);
+                  if (paymentValidationError) setPaymentValidationError(null);
+                }}
               />
               <div>
                 <FloatingInput
                   label="เบอร์ PromptPay"
                   type="text"
                   value={promptPayNumber}
-                  onChange={setPromptPayNumber}
+                  onChange={(v) => {
+                    setPromptPayNumber(v);
+                    if (paymentValidationError) setPaymentValidationError(null);
+                  }}
                 />
                 <p className="mt-1 text-[11px] text-slate-500">
                   เบอร์โทรศัพท์หรือเลขบัตรประชาชน
